@@ -1,5 +1,5 @@
 // অফলাইনে খোলার জন্য অ্যাপের ফাইলগুলো জমা রাখে। নতুন সংস্করণ দিলে VERSION বদলান।
-const VERSION = 'pm-v1.2.1';
+const VERSION = 'pm-v1.3.0';
 const SHELL = ['./', 'index.html', 'app.css', 'app.js', 'db.js', 'i18n.js', 'firebase-config.js', 'manifest.json',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
   'fonts/SolaimanLipi-Regular.woff2', 'fonts/SolaimanLipi-Bold.woff2', 'fonts/Kalpurush.woff2'];

@@ -212,20 +212,24 @@ function confirmBox(text, onYes, yesLabel){
 /* ================= auth & data wiring ================= */
 let unsubs = [], progUnsubs = [];
 function startData(){
-  unsubs.forEach(u => u()); unsubs = [];
-  unsubs.push(DB.watch('users', arr => {
-    S.users = arr; S.loaded.users = true;
-    S.profile = arr.find(u => u.id === S.user.uid) || null;
-    if (!S.profile && DB.mode === 'firebase' && (S.user.email || '').toLowerCase() === ADMIN_EMAIL && !S._creatingAdmin) {
+  unsubs.forEach(u => u()); unsubs = []; S._rest = false;
+  // Only your own profile is read first; everything else opens once you are an active user.
+  unsubs.push(DB.watchDoc('users', S.user.uid, doc => {
+    S.profile = doc; S.loaded.users = true;
+    if (!doc && DB.mode === 'firebase' && (S.user.email || '').toLowerCase() === ADMIN_EMAIL && !S._creatingAdmin) {
       S._creatingAdmin = true;
       DB.set('users', S.user.uid, { name: P.lang === 'bn' ? 'অ্যাডমিন' : 'Admin', email: S.user.email, role:'admin', active:true, perms:{} }).catch(err => { S.dbErr = (err && err.code) || 'error'; render(); });
     }
-    render();
-  }));
-  unsubs.push(DB.watch('programs', arr => {
-    S.programs = arr.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || (b.createdAt || 0) - (a.createdAt || 0));
-    S.loaded.programs = true;
-    if (!S.programs.find(p => p.id === S.pid)) setProgram(S.programs[0] ? S.programs[0].id : null, true);
+    if (doc && doc.active !== false && !S._rest) {
+      S._rest = true; S.dbErr = '';
+      unsubs.push(DB.watch('users', arr => { S.users = arr; render(); }));
+      unsubs.push(DB.watch('programs', arr => {
+        S.programs = arr.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || (b.createdAt || 0) - (a.createdAt || 0));
+        S.loaded.programs = true;
+        if (!S.programs.find(p => p.id === S.pid)) setProgram(S.programs[0] ? S.programs[0].id : null, true);
+        render();
+      }));
+    }
     render();
   }));
 }
@@ -293,6 +297,7 @@ const avatar = (name, i) => { const n = `var(--f${(i % 4) + 1})`; return `<div c
 const emptyBox = (icon, text, btn) => `<div class="card empty">${ic(icon)}<p>${esc(text)}</p>${btn || ''}</div>`;
 
 /* ---------- login ---------- */
+const GLOGO = '<svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true" style="flex:none"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>';
 function loginView(){
   const demo = DB.mode === 'demo';
   return `<div class="login"><div class="login-top"><div class="logo">${ic('flag')}</div><h1>${esc(t('appName'))}</h1><p style="margin:0;opacity:.9">${esc(t('tagline'))}</p></div>
@@ -301,17 +306,17 @@ function loginView(){
     ${demo ? `<div class="note-box"><b>${esc(t('demoMode'))}</b><br>${esc(t('demoNote'))}</div>
       <button class="btn block" data-a="demoIn" data-r="admin">${ic('shield')}${esc(t('demoAsAdmin'))}</button>
       <button class="btn ghost block" data-a="demoIn" data-r="organizer">${ic('users')}${esc(t('demoAsOrg'))}</button>` :
-    `<form id="loginForm" class="stack">
-      <div class="field"><label for="lgEmail">${esc(t('email'))}</label><input class="in" id="lgEmail" type="email" autocomplete="username" required></div>
-      <div class="field"><label for="lgPass">${esc(t('password'))}</label><input class="in" id="lgPass" type="password" autocomplete="current-password" required></div>
+    `<div class="stack">
       ${S.loginErr ? `<div class="err">${esc(S.loginErr)}</div>` : ''}
-      <button class="btn block" type="submit" ${S.busy ? 'disabled' : ''}>${esc(S.busy ? t('signingIn') : t('signIn'))}</button></form>`}
+      <button class="btn block" data-a="googleIn" ${S.busy ? 'disabled' : ''}>${GLOGO}${esc(S.busy ? t('signingIn') : t('googleIn'))}</button>
+      <p class="small muted" style="margin:0;text-align:center">${esc(t('googleHint'))}</p></div>`}
     <div class="seg" role="group" aria-label="${esc(t('language'))}"><button class="${P.lang === 'bn' ? 'on' : ''}" data-a="lang" data-l="bn">বাংলা</button><button class="${P.lang === 'en' ? 'on' : ''}" data-a="lang" data-l="en">English</button></div>
   </div></div></div>`;
 }
 function dbErrView(){ return `<div class="login"><div class="login-top"><div class="logo">${ic('shield')}</div><h1>${esc(t('appName'))}</h1></div><div class="login-card"><div><div class="err">${esc(t('e_db'))} ${esc(S.dbErr)}</div><button class="btn ghost block" data-a="signOut">${ic('logout')}${esc(t('signOut'))}</button></div></div></div>`; }
+window.addEventListener('pm-auth-error', e => { S.busy = false; S.loginErr = loginMsg(e.detail); render(); });
 window.addEventListener('pm-db-error', e => { if (S.user) { S.dbErr = (e.detail && e.detail.code) || 'error'; render(); } });
-function noAccessView(){ return `<div class="login"><div class="login-top"><div class="logo">${ic('shield')}</div><h1>${esc(t('appName'))}</h1></div><div class="login-card"><div><div class="err">${esc(t('noAccess'))}</div><button class="btn ghost block" data-a="signOut">${ic('logout')}${esc(t('signOut'))}</button></div></div></div>`; }
+function noAccessView(){ return `<div class="login"><div class="login-top"><div class="logo">${ic('shield')}</div><h1>${esc(t('appName'))}</h1></div><div class="login-card"><div><div class="err">${esc(t('noAccess'))}<br><b style="overflow-wrap:anywhere">${esc((S.user && S.user.email) || '')}</b></div><button class="btn ghost block" data-a="signOut">${ic('logout')}${esc(t('signOut'))}</button></div></div></div>`; }
 function noProgramView(){
   if (!S.loaded.programs) return `<div class="empty">${esc(t('loading'))}</div>`;
   return emptyBox('flag', isAdmin() ? t('noPrograms') : t('noProgramsOrg'), isAdmin() ? `<button class="btn" data-a="progNew">${ic('plus')}${esc(t('newProgram'))}</button>` : '');
@@ -653,7 +658,7 @@ function openUserForm(id){
   const u = id ? S.users.find(x => x.id === id) : null; const self = u && u.id === S.user.uid;
   openSheet({ title: u ? (u.name || u.email) : t('addUser'), body: () => `<p class="small muted" style="margin:0">${esc(t('userHint'))}</p>
     <div class="field"><label for="uName">${esc(t('name'))}</label><input class="in" id="uName" value="${esc(u ? u.name || '' : '')}"></div>
-    ${u ? `<div class="small muted">${esc(u.email || '')}</div>` : `<div class="field"><label for="uEmail">${esc(t('email'))}</label><input class="in" id="uEmail" type="email" autocomplete="off"></div><div class="field"><label for="uPass">${esc(t('tempPass'))}</label><input class="in" id="uPass" type="text" autocomplete="new-password"></div>`}
+    ${u ? `<div class="small muted">${esc(u.email || '')}</div>` : `<div class="field"><label for="uEmail">${esc(t('gmail'))}</label><input class="in" id="uEmail" type="email" autocomplete="off" inputmode="email" autocapitalize="off"></div>`}
     ${!self ? `<div class="field"><label>${esc(t('r_admin'))} / ${esc(t('r_org'))}</label><div class="seg"><button type="button" class="${!u || u.role !== 'admin' ? 'on' : ''}" data-a="segPick" data-v="organizer">${esc(t('r_org'))}</button><button type="button" class="${u && u.role === 'admin' ? 'on' : ''}" data-a="segPick" data-v="admin">${esc(t('r_admin'))}</button></div></div>
       ${permSwitches(u || { perms:{ members:true, chanda:true, notes:true } })}
       ${u ? `<label class="row" style="justify-content:space-between"><span>${esc(t('active'))}</span><span class="switch"><input type="checkbox" id="uActive" ${u.active !== false ? 'checked' : ''}><i></i></span></label>` : ''}` : ''}`,
@@ -669,15 +674,15 @@ async function saveUser(id, root){
     if (await commit('editUser', [{ path:'users', id, data: doc }])) closeSheet();
     return;
   }
-  const email = $('#uEmail', root).value.trim(), pass = $('#uPass', root).value;
-  if (!email) { toast(t('email')); return; } if (pass.length < 6) { toast(t('weakPass')); return; }
-  try { await DB.createUser(email, pass, { name, role: roleBtn ? roleBtn.dataset.v : 'organizer', perms, active:true }); toast(t('saved')); closeSheet(); }
-  catch(e) { toast(e && e.code === 'auth/email-already-in-use' ? t('userExists') : (e && e.code === 'auth/weak-password' ? t('weakPass') : t('saveFail'))); }
+  const email = $('#uEmail', root).value.trim().toLowerCase();
+  if (!/^[^\s@\/]+@[^\s@\/]+\.[^\s@\/]+$/.test(email)) { toast(t('needEmail')); return; }
+  if (S.users.some(u => u.id === email || (u.email || '').toLowerCase() === email)) { toast(t('userExists')); return; }
+  if (await commit('addUser', [{ path:'users', id: email, data: { email, name, role: roleBtn ? roleBtn.dataset.v : 'organizer', perms, active:true } }])) closeSheet();
 }
 
 /* ---------- history ---------- */
-const LABELS = { bn:{ addFamily:'পরিবার যোগ', editFamily:'পরিবার সম্পাদনা', delFamily:'পরিবার মুছে ফেলা', addPayment:'টাকা জমা', editPayment:'জমা সম্পাদনা', delPayment:'জমা মুছে ফেলা', addNote:'নোট যোগ', editNote:'নোট সম্পাদনা', delNote:'নোট মুছে ফেলা', addProgram:'প্রোগ্রাম যোগ', editProgram:'প্রোগ্রাম সম্পাদনা', delProgram:'প্রোগ্রাম মুছে ফেলা', editUser:'ব্যবহারকারী সম্পাদনা', addBudget:'বাজেট খাত যোগ', editBudget:'বাজেট খাত সম্পাদনা', delBudget:'বাজেট খাত মুছে ফেলা', addExpense:'খরচ যোগ', editExpense:'খরচ সম্পাদনা', delExpense:'খরচ মুছে ফেলা', addSponsor:'স্পন্সর যোগ', editSponsor:'স্পন্সর সম্পাদনা', delSponsor:'স্পন্সর মুছে ফেলা', addTransfer:'লেনদেন যোগ', editTransfer:'লেনদেন সম্পাদনা', delTransfer:'লেনদেন মুছে ফেলা', addGift:'উপহার যোগ', editGift:'উপহার সম্পাদনা', delGift:'উপহার মুছে ফেলা', giveGift:'উপহার দেওয়ার চিহ্ন' },
-  en:{ addFamily:'Family added', editFamily:'Family edited', delFamily:'Family deleted', addPayment:'Payment added', editPayment:'Payment edited', delPayment:'Payment deleted', addNote:'Note added', editNote:'Note edited', delNote:'Note deleted', addProgram:'Program added', editProgram:'Program edited', delProgram:'Program deleted', editUser:'User edited', addBudget:'Budget line added', editBudget:'Budget line edited', delBudget:'Budget line deleted', addExpense:'Expense added', editExpense:'Expense edited', delExpense:'Expense deleted', addSponsor:'Sponsor added', editSponsor:'Sponsor edited', delSponsor:'Sponsor deleted', addTransfer:'Transfer added', editTransfer:'Transfer edited', delTransfer:'Transfer deleted', addGift:'Gift added', editGift:'Gift edited', delGift:'Gift deleted', giveGift:'Gift handed out' } };
+const LABELS = { bn:{ addUser:'ব্যবহারকারী যোগ', addFamily:'পরিবার যোগ', editFamily:'পরিবার সম্পাদনা', delFamily:'পরিবার মুছে ফেলা', addPayment:'টাকা জমা', editPayment:'জমা সম্পাদনা', delPayment:'জমা মুছে ফেলা', addNote:'নোট যোগ', editNote:'নোট সম্পাদনা', delNote:'নোট মুছে ফেলা', addProgram:'প্রোগ্রাম যোগ', editProgram:'প্রোগ্রাম সম্পাদনা', delProgram:'প্রোগ্রাম মুছে ফেলা', editUser:'ব্যবহারকারী সম্পাদনা', addBudget:'বাজেট খাত যোগ', editBudget:'বাজেট খাত সম্পাদনা', delBudget:'বাজেট খাত মুছে ফেলা', addExpense:'খরচ যোগ', editExpense:'খরচ সম্পাদনা', delExpense:'খরচ মুছে ফেলা', addSponsor:'স্পন্সর যোগ', editSponsor:'স্পন্সর সম্পাদনা', delSponsor:'স্পন্সর মুছে ফেলা', addTransfer:'লেনদেন যোগ', editTransfer:'লেনদেন সম্পাদনা', delTransfer:'লেনদেন মুছে ফেলা', addGift:'উপহার যোগ', editGift:'উপহার সম্পাদনা', delGift:'উপহার মুছে ফেলা', giveGift:'উপহার দেওয়ার চিহ্ন' },
+  en:{ addUser:'User added', addFamily:'Family added', editFamily:'Family edited', delFamily:'Family deleted', addPayment:'Payment added', editPayment:'Payment edited', delPayment:'Payment deleted', addNote:'Note added', editNote:'Note edited', delNote:'Note deleted', addProgram:'Program added', editProgram:'Program edited', delProgram:'Program deleted', editUser:'User edited', addBudget:'Budget line added', editBudget:'Budget line edited', delBudget:'Budget line deleted', addExpense:'Expense added', editExpense:'Expense edited', delExpense:'Expense deleted', addSponsor:'Sponsor added', editSponsor:'Sponsor edited', delSponsor:'Sponsor deleted', addTransfer:'Transfer added', editTransfer:'Transfer edited', delTransfer:'Transfer deleted', addGift:'Gift added', editGift:'Gift edited', delGift:'Gift deleted', giveGift:'Gift handed out' } };
 function openHistory(){
   openSheet({ title: t('history'), body: () => S.undo.length ? `<div class="card" style="padding-block:4px"><div class="list">${S.undo.slice().reverse().map((e, i) => `<div class="item"><div class="body"><div class="title">${esc((LABELS[P.lang] || LABELS.bn)[e.label] || e.label)}</div><div class="small muted">${esc(new Date(e.at).toLocaleTimeString(P.lang === 'bn' ? 'bn-BD' : 'en-GB', {hour:'numeric', minute:'2-digit'}))}</div></div>${i === 0 ? `<button class="btn sm" data-a="undo">${ic('undo')}${esc(t('undo'))}</button>` : ''}</div>`).join('')}</div></div>` : `<p class="muted">${esc(t('noHistory'))}</p>` });
 }
@@ -1077,6 +1082,11 @@ function openExport(){
 const A = {
   tab: el => { S.view = el.dataset.v; if (el.dataset.inc) S.incMode = el.dataset.inc; if (el.dataset.spend) S.spendMode = el.dataset.spend; S.q = ''; S.cq = ''; S.eq = ''; render(); window.scrollTo(0, 0); },
   demoIn: el => DB.demoSignIn(el.dataset.r),
+  googleIn: async () => {
+    S.busy = true; S.loginErr = ''; render();
+    try { await DB.signInGoogle(); S.busy = false; }
+    catch(err) { S.busy = false; S.loginErr = loginMsg(err); render(); }
+  },
   signOut: () => { DB.signOut(); },
   lang: el => { P.lang = el.dataset.l; savePrefs(); $('#toast').hidden = true; if (DB.mode === 'demo' && DB.isPristine() && DB.seedLang() !== P.lang) { DB.resetDemo(false, P.lang); S.undo = []; } render(); if (sheets.length && sheets[sheets.length - 1].kind === 'appearance') { closeSheet(); openAppearance(); } },
   closeSheet: () => closeSheet(),
@@ -1201,7 +1211,7 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => { if (e.target.id === 'pcat') { S.cat = e.target.value; render(); } if (e.target.id === 'expBud') { S.expBud = e.target.value; render(); } });
 function loginMsg(err){
   const c = (err && err.code) || '';
-  if (/invalid-credential|wrong-password|user-not-found|invalid-email|missing-password|invalid-login/.test(c)) return t('loginErr');
+  if (/popup-closed-by-user|cancelled-popup-request|user-cancelled/.test(c)) return '';
   if (c === 'auth/unauthorized-domain') return t('e_domain');
   if (c === 'auth/operation-not-allowed') return t('e_notAllowed');
   if (c === 'auth/network-request-failed') return t('e_network');
@@ -1209,12 +1219,7 @@ function loginMsg(err){
   if (c === 'auth/too-many-requests') return t('e_many');
   return t('e_other') + ' ' + (c || String(err && err.message || err));
 }
-document.addEventListener('submit', async e => {
-  if (e.target.id !== 'loginForm') return; e.preventDefault();
-  S.busy = true; S.loginErr = ''; render();
-  try { await DB.signIn($('#lgEmail').value.trim(), $('#lgPass').value); S.busy = false; }
-  catch(err) { S.busy = false; S.loginErr = loginMsg(err); render(); }
-});
+
 
 /* ================= demo sample data ================= */
 window.PM_SEED = function(mem, rid, empty, lang){

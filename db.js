@@ -27,13 +27,14 @@ window.PMDB = (function(){
       try { sessionStorage.setItem('pm-demo-user', JSON.stringify(localUser)); } catch(e) {}
       authCb && authCb(localUser);
     },
-    async signIn(){ throw new Error('demo'); },
+    async signInGoogle(){ throw new Error('demo'); },
     async signOut(){ localUser = null; try { sessionStorage.removeItem('pm-demo-user'); } catch(e) {} authCb && authCb(null); },
     async createUser(email, password, data){
       loadMem();
       if (colArr('users').some(u => (u.email || '').toLowerCase() === email.toLowerCase())) { const e = new Error('exists'); e.code = 'auth/email-already-in-use'; throw e; }
       const id = rid(); (mem.cols.users = mem.cols.users || {})[id] = Object.assign({ email }, data); persist(); emit('users'); return id;
     },
+    watchDoc(path, id, cb){ return local.watch(path, arr => cb(arr.find(x => x.id === id) || null)); },
     watch(path, cb){ loadMem(); (watchers[path] = watchers[path] || []).push(cb); setTimeout(() => cb(colArr(path)), 0); return () => { watchers[path] = (watchers[path] || []).filter(f => f !== cb); }; },
     async getAll(path){ loadMem(); return colArr(path); },
     isPristine(){ loadMem(); return !mem.touched; },
@@ -57,13 +58,20 @@ window.PMDB = (function(){
     app = firebase.initializeApp(cfg);
     auth = firebase.auth();
     fs = firebase.firestore();
+    auth.getRedirectResult().catch(e => window.dispatchEvent(new CustomEvent('pm-auth-error', { detail: e })));
     try { await fs.enablePersistence({ synchronizeTabs: true }); } catch(e) {}
   })();
   const clean = d => JSON.parse(JSON.stringify(d, (k, v) => v === undefined ? null : v));
   return {
     mode: 'firebase',
-    async onAuth(cb){ await ready; auth.onAuthStateChanged(u => cb(u ? { uid: u.uid, email: u.email } : null)); },
-    async signIn(email, pass){ await ready; await auth.signInWithEmailAndPassword(email, pass); },
+    // The profile key is the lower-case Gmail address, so the admin can add people before they ever sign in.
+    async onAuth(cb){ await ready; auth.onAuthStateChanged(u => cb(u ? { uid: (u.email || '').toLowerCase(), email: u.email } : null)); },
+    async signInGoogle(){
+      await ready;
+      const prov = new firebase.auth.GoogleAuthProvider(); prov.setCustomParameters({ prompt: 'select_account' });
+      try { await auth.signInWithPopup(prov); }
+      catch(e){ if (/popup-blocked|operation-not-supported|web-storage-unsupported/.test(e && e.code)) { await auth.signInWithRedirect(prov); return; } throw e; }
+    },
     async signOut(){ await ready; await auth.signOut(); },
     async createUser(email, password, data){
       await ready;
@@ -74,6 +82,11 @@ window.PMDB = (function(){
       await sec.auth().signOut();
       await fs.collection('users').doc(uid).set(clean(Object.assign({ email }, data)));
       return uid;
+    },
+    watchDoc(path, id, cb){
+      let unsub = null, dead = false;
+      ready.then(() => { if (dead) return; unsub = fs.collection(path).doc(id).onSnapshot(s => cb(s.exists ? Object.assign({ id: s.id }, s.data()) : null), err => { console.warn(path, id, err); window.dispatchEvent(new CustomEvent('pm-db-error', { detail: { path, code: err && err.code } })); }); });
+      return () => { dead = true; unsub && unsub(); };
     },
     watch(path, cb){
       let unsub = null, dead = false;

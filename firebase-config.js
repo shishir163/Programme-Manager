@@ -12,4 +12,4 @@ window.PM_FIREBASE = {
 
 // প্রধান অ্যাডমিনের ইমেইল। এই ইমেইল দিয়ে প্রথমবার লগইন করলে সে নিজে থেকেই অ্যাডমিন হয়ে যাবে।
 // firestore.rules ফাইলেও একই ইমেইল বসাতে হবে।
-window.PM_ADMIN_EMAIL = "shishir.mmc163@gmail.com";
+window.PM_ADMIN_EMAIL = "mamun15717@gmail.com";

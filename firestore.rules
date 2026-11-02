@@ -3,18 +3,20 @@ rules_version = '2';
 // নিচের ADMIN ইমেইলটি firebase-config.js-এর PM_ADMIN_EMAIL-এর সঙ্গে মিলিয়ে দিন।
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function myDoc() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function signedIn() { return request.auth != null && request.auth.token.email != null && request.auth.token.email_verified == true; }
+    function myEmail() { return request.auth.token.email.lower(); }
+    function myDoc() { return /databases/$(database)/documents/users/$(myEmail()); }
     function me() { return get(myDoc()).data; }
     function active() { return signedIn() && exists(myDoc()) && me().get('active', true) == true; }
     function isAdmin() { return active() && me().get('role', '') == 'admin'; }
     function can(p) { return isAdmin() || (active() && me().get('perms', {}).get(p, false) == true); }
 
-    match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || active());
+    match /users/{key} {
+      allow get: if signedIn() && (myEmail() == key || active());
+      allow list: if active();
       // প্রথমবার প্রধান অ্যাডমিন নিজের অ্যাকাউন্ট নিজেই বানাতে পারবেন
       allow create: if isAdmin() ||
-        (signedIn() && request.auth.uid == uid && request.auth.token.email == 'shishir.mmc163@gmail.com'
+        (signedIn() && myEmail() == key && key == 'mamun15717@gmail.com'
           && request.resource.data.role == 'admin');
       allow update, delete: if isAdmin();
     }
