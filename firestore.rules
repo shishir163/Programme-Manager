@@ -1,0 +1,36 @@
+rules_version = '2';
+// Program Manager — Firestore নিরাপত্তা নিয়ম
+// নিচের ADMIN ইমেইলটি firebase-config.js-এর PM_ADMIN_EMAIL-এর সঙ্গে মিলিয়ে দিন।
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function myDoc() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function me() { return get(myDoc()).data; }
+    function active() { return signedIn() && exists(myDoc()) && me().get('active', true) == true; }
+    function isAdmin() { return active() && me().get('role', '') == 'admin'; }
+    function can(p) { return isAdmin() || (active() && me().get('perms', {}).get(p, false) == true); }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || active());
+      // প্রথমবার প্রধান অ্যাডমিন নিজের অ্যাকাউন্ট নিজেই বানাতে পারবেন
+      allow create: if isAdmin() ||
+        (signedIn() && request.auth.uid == uid && request.auth.token.email == 'shishir.mmc163@gmail.com'
+          && request.resource.data.role == 'admin');
+      allow update, delete: if isAdmin();
+    }
+
+    match /programs/{pid} {
+      allow read: if active();
+      allow write: if isAdmin();
+
+      match /families/{id} { allow read: if active(); allow write: if can('members'); }
+      match /payments/{id} { allow read: if active(); allow write: if can('chanda'); }
+      match /notes/{id}    { allow read: if active(); allow write: if can('notes'); }
+      match /budgets/{id}  { allow read: if active(); allow write: if isAdmin(); }
+      match /expenses/{id} { allow read: if active(); allow write: if can('expense'); }
+      match /sponsors/{id} { allow read: if active(); allow write: if can('sponsor'); }
+      match /settlements/{id} { allow read: if active(); allow write: if can('expense'); }
+      match /gifts/{id}    { allow read: if active(); allow write: if can('gift'); }
+    }
+  }
+}
