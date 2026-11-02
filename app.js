@@ -63,6 +63,7 @@ const I = {
   wallet:'<rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 10.5h18"/><path d="M15.5 15h2.5"/><path d="M6 6V5a2 2 0 0 1 2-2h9"/>',
   note:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h7M9 17h5"/>',
   more:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
+  expand:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', shrink:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
   plus:'<path d="M12 5v14M5 12h14"/>', x:'<path d="M6 6l12 12M18 6 6 18"/>',
   search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   calc:'<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8 7h8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/>',
@@ -86,7 +87,7 @@ const I = {
   tag:'<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>',
   coins:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>',
   lang:'<path d="M4 5h8M8 3v2M5.5 5c.8 3.5 3.3 6 6.5 7.5M10.5 5C10 8 7.5 11 4 12.5"/><path d="m13 21 4-9 4 9M14.5 18h5"/>',
-  bus:'<rect x="3" y="4" width="18" height="13" rx="3"/><path d="M3 11h18M7 17v3M17 17v3"/><circle cx="7.5" cy="14" r=".8"/><circle cx="16.5" cy="14" r=".8"/>', shuffle:'<path d="M3 7h4c4 0 6 10 10 10h4M3 17h4c1.4 0 2.5-.8 3.4-2M14 8c.8-.7 1.7-1 3-1h4M18 4l3 3-3 3M18 14l3 3-3 3"/>', upload:'<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
+  cloud:'<path d="M7 18a4 4 0 0 1-.7-7.9A6 6 0 0 1 18.2 9.6 4.2 4.2 0 0 1 17.5 18z"/>', bus:'<rect x="3" y="4" width="18" height="13" rx="3"/><path d="M3 11h18M7 17v3M17 17v3"/><circle cx="7.5" cy="14" r=".8"/><circle cx="16.5" cy="14" r=".8"/>', shuffle:'<path d="M3 7h4c4 0 6 10 10 10h4M3 17h4c1.4 0 2.5-.8 3.4-2M14 8c.8-.7 1.7-1 3-1h4M18 4l3 3-3 3M18 14l3 3-3 3"/>', upload:'<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
   baby:'<circle cx="12" cy="7" r="3"/><path d="M8 21v-5l-3-2M16 21v-5l3-2M8 13c0-2 1.8-3 4-3s4 1 4 3v3H8z"/>',
   check:'<path d="m5 12 5 5 9-10"/>', gift:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M12 8S10.5 3 8 3.8C5.8 4.5 7 8 12 8zM12 8s1.5-5 4-4.2C18.2 4.5 17 8 12 8z"/>',
   download:'<path d="M12 3v12M7 10l5 5 5-5M4 20h16"/>', receipt:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
@@ -273,11 +274,11 @@ function renderBandOnly(){ const b = $('.band'); if (b) b.outerHTML = bandView()
 function bandView(){
   const p = prog();
   return `<header class="band"><div class="band-row">
-    <div class="band-title"><div class="app">${esc(t('appName'))}</div>
+    <div class="band-title"><div class="app">${esc(t('appName'))}${syncChip()}</div>
       <button class="prog" data-a="progPicker" aria-label="${esc(t('chooseProgram'))}"><span>${esc(p ? p.name : t('allPrograms'))}</span>${ic('down')}</button></div>
     ${S.undo.length ? `<button class="iconbtn" data-a="undo" aria-label="${esc(t('undo'))}" title="${esc(t('undo'))}">${ic('undo')}</button>` : ''}
     ${p ? `<button class="iconbtn" data-a="shareSummary" aria-label="${esc(t('shareSummary'))}" title="${esc(t('shareSummary'))}">${ic('share')}</button>` : ''}
-  </div>${syncStrip()}${DB.mode === 'demo' ? `<div class="demo-flag"><span>${esc(t('demoShort'))}</span><b>${esc(isAdmin() ? t('r_admin') : t('r_org'))}</b></div>` : ''}<div class="bunting" aria-hidden="true">${BUNTING}</div></header>`;
+  </div>${DB.mode === 'demo' ? `<div class="demo-flag"><span>${esc(t('demoShort'))}</span><b>${esc(isAdmin() ? t('r_admin') : t('r_org'))}</b></div>` : ''}<div class="bunting" aria-hidden="true">${BUNTING}</div></header>`;
 }
 function tabsView(){
   const tabs = [['home','home'],['people','users'],['income','wallet'],['spend','receipt'],['more','more']];
@@ -286,7 +287,7 @@ function tabsView(){
 }
 function fabView(){
   if (!prog()) return '';
-  const f = (a, l) => `<button class="fab" data-a="${a}" aria-label="${esc(l)}">${ic('plus')}</button>`;
+  const f = (a, l) => `<button class="fab" data-a="${a}" aria-label="${esc(l)}">${ic('plus')}<span>${esc(l)}</span></button>`;
   if (S.view === 'people' && can('members')) return f('famNew', t('addFamily'));
   if (S.view === 'notes' && can('notes')) return f('noteNew', t('newNote'));
   if (S.view === 'income' && S.incMode === 'sp' && can('sponsor')) return f('spNew', t('addSp'));
@@ -325,40 +326,12 @@ function noProgramView(){
 }
 
 /* ---------- summary (home) ---------- */
-function homeView(){
-  const p = prog(), s = stats(); const pct = s.due > 0 ? Math.min(100, Math.round(s.paid / s.due * 100)) : 0;
-  const tile = (k, v, cls) => `<div class="tile ${cls || ''}"><div class="k">${esc(k)}</div><div class="v num ${cls ? 'brand' : ''}">${v}</div></div>`;
-  const groupsTbl = (p.ageGroups || []).length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${esc(t('group'))}</th><th>${esc(t('total'))}</th><th>${esc(t('male'))}</th><th>${esc(t('female'))}</th><th>${esc(t('inside'))}</th><th>${esc(t('outsideShort'))}</th></tr></thead><tbody>
-    ${s.groups.map(G => `<tr><td><b>${esc(G.g.name)}</b><div class="small muted">${esc(rangeLabel(G.g.min, G.g.max))}</div></td><td><b>${nf(G.total)}</b></td><td>${nf(G.m)}</td><td>${nf(G.f)}</td><td>${nf(G.inn)}</td><td>${nf(G.out)}</td></tr>`).join('')}
-    ${s.unknown ? `<tr><td class="muted">${esc(t('unknownAge'))}</td><td>${nf(s.unknown)}</td><td></td><td></td><td></td><td></td></tr>` : ''}
-    </tbody></table></div>` : `<p class="muted" style="margin:0 0 10px">${esc(t('noGroups'))}</p>${isAdmin() ? `<button class="btn sm" data-a="ageGroups">${ic('baby')}${esc(t('setGroups'))}</button>` : ''}`;
-  const cats = Object.keys(s.cats);
-  const catTbl = cats.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${esc(t('category'))}</th><th>${esc(t('families'))}</th><th>${esc(t('people'))}</th><th>${esc(t('due'))}</th><th>${esc(t('collected'))}</th></tr></thead><tbody>
-    ${cats.map(c => { const x = s.cats[c]; return `<tr><td>${esc(c || t('noCat'))}</td><td>${nf(x.fams)}</td><td>${nf(x.persons)}</td><td>${tk(x.due)}</td><td>${tk(x.paid)}</td></tr>`; }).join('')}
-    </tbody><tfoot><tr><td>${esc(t('total'))}</td><td>${nf(s.fams)}</td><td>${nf(s.persons)}</td><td>${tk(s.due)}</td><td>${tk(s.paid)}</td></tr></tfoot></table></div>` : `<p class="muted" style="margin:0">${esc(t('noFamilies'))}</p>`;
-  return `<section class="hero-card" aria-label="${esc(p.name)}">
-      <div class="row"><span class="pill info">${esc(t('ty_' + (p.type || 'other')))}</span>${p.date ? `<span class="row small muted" style="gap:4px"><span style="width:16px;height:16px;display:inline-flex">${ic('cal')}</span>${esc(fd(p.date))}</span>` : ''}${p.venue ? `<span class="row small muted" style="gap:4px"><span style="width:16px;height:16px;display:inline-flex">${ic('map')}</span>${esc(p.venue)}</span>` : ''}</div>
-      <div class="grid3">${tile(t('totalPeople'), nf(s.persons), 'brand')}${tile(t('families'), nf(s.fams))}${tile(t('inside'), nf(s.inn))}${tile(t('outsideShort'), nf(s.out))}${tile(t('male'), nf(s.m))}${tile(t('female'), nf(s.f))}</div>
-    </section>
-    <section class="card tap" data-a="tab" data-v="income" data-inc="chanda" role="button" tabindex="0">
-      <div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(t('t_chanda'))}</h3><span class="small muted num">${nf(pct)}%</span></div>
-      <div class="bar" style="margin:10px 0"><i style="width:${pct}%"></i></div>
-      <div class="grid3"><div><div class="small muted">${esc(t('due'))}</div><b class="num">${tk(s.due)}</b></div><div><div class="small muted">${esc(t('collected'))}</div><b class="num" style="color:var(--ok)">${tk(s.paid)}</b></div><div><div class="small muted">${esc(t('remaining'))}</div><b class="num" style="color:var(--bad)">${tk(Math.max(0, s.due - s.paid))}</b></div></div>
-    </section>
-    ${moneyCard()}
-    ${giftCard()}
-    <div class="grid-auto">
-      <section class="card"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h3 style="margin:0">${esc(t('byAge'))}</h3>${isAdmin() && (p.ageGroups || []).length ? `<button class="linkbtn small" data-a="ageGroups">${esc(t('edit'))}</button>` : ''}</div>${groupsTbl}</section>
-      <section class="card"><h3>${esc(t('byCat'))}</h3>${catTbl}</section>
-    </div>
-    ${p.note ? `<section class="card note-card"><h3>${esc(t('progNote'))}</h3><div class="note-body">${esc(p.note)}</div></section>` : ''}
-`;
-}
+/* (dashboard cards: see phase 6 block below) */
 
-function moneyCard(){
+function moneyCard(c){
   const m = money(), bt = budTotals();
   return `<section class="card tap" data-a="tab" data-v="settle" role="button" tabindex="0">
-    <div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(t('money'))}</h3><span class="linkbtn small">${esc(t('openSettle'))}</span></div>
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(c ? dashTitle(c) : t('money'))}</h3><span class="linkbtn small">${esc(t('openSettle'))}</span></div>
     <div class="grid3" style="margin-top:10px"><div><div class="small muted">${esc(t('income'))}</div><b class="num">${tk(m.income)}</b></div><div><div class="small muted">${esc(t('spent'))}</div><b class="num">${tk(m.spent)}</b></div><div><div class="small muted">${esc(m.bal >= 0 ? t('inHand') : t('deficit'))}</div><b class="num" style="color:${m.bal >= 0 ? 'var(--ok)' : 'var(--bad)'}">${tk(Math.abs(m.bal))}</b></div></div>
     ${bt.total > 0 ? `<div class="small muted" style="margin-top:10px">${esc(t('budgetUse'))}: ${tk(m.spent)} / ${tk(bt.total)}</div><div class="bar thin" style="margin-top:4px"><i class="${barCls(m.spent, bt.total)}" style="width:${barW(m.spent, bt.total)}%"></i></div>` : ''}
   </section>`;
@@ -396,7 +369,7 @@ function peopleList(){
     const ms = f.members || []; const d = famDue(f, p), pd = famPaid(f.id), st = famStatus(d, pd);
     return `<div class="item tap" data-a="famOpen" data-id="${f.id}" role="button" tabindex="0">${avatar(famName(f), i)}<div class="body">
       <div class="title">${esc(famName(f))}</div>
-      <div class="small muted">${[f.cat, f.side === 'out' ? t('outside') : t('inside'), t('peopleN', nf(ms.length))].filter(Boolean).map(esc).join(' · ')}</div>
+      <div class="small muted">${[f.cat, f.side === 'out' ? t('outside') : (f.dept || t('inside')), t('peopleN', nf(ms.length))].filter(Boolean).map(esc).join(' · ')}</div>
       ${ms.length > 1 ? `<div class="chips">${ms.slice(1).map(m => `<span class="chip ${m.g === 'M' ? 'm' : m.g === 'F' ? 'f' : ''}">${esc(m.name || '—')}${ageNum(m.age) != null ? ` · ${nf(m.age)}` : ''}</span>`).join('')}</div>` : ''}
     </div><span class="pill ${stCls[st]}">${esc(t('st_' + st))}</span></div>`; }).join('')}</div></section>`;
 }
@@ -417,7 +390,7 @@ function memberRow(m, p, idx){
 function readFamForm(root){
   const side = $('[data-a="fside"].on', root) ? $('[data-a="fside"].on', root).dataset.s : 'in';
   const members = $$('.mem', root).map(el => ({ id: el.dataset.mid, name: $('.m-name', el).value.trim(), rel: $('.m-rel', el).value.trim(), g: $('.m-g', el).value, age: parseNum($('.m-age', el).value), rate: $('.m-rate', el).value }));
-  return { side, cat: $('#fCat', root) ? $('#fCat', root).value : '', phone: $('#fPhone', root).value.trim(), due: parseNum($('#fDue', root).value), note: $('#fNote', root).value.trim(), members };
+  return { side, dept: side === 'out' ? '' : ($('#fDept', root) ? $('#fDept', root).value : ''), cat: $('#fCat', root) ? $('#fCat', root).value : '', phone: $('#fPhone', root).value.trim(), due: parseNum($('#fDue', root).value), note: $('#fNote', root).value.trim(), members };
 }
 function updateAutoLabels(root){
   const p = prog(); const f = readFamForm(root); let sum = 0;
@@ -434,6 +407,7 @@ function openFamily(id){
   if (!editable && f) return openFamilyView(f);
   openSheet({ title: f ? t('editFamily') : t('addFamily'), kind:'family',
     body: () => `<div class="field"><label>${esc(t('side'))}</label><div class="seg"><button type="button" class="${base.side !== 'out' ? 'on' : ''}" data-a="fside" data-s="in">${esc(t('inside'))}</button><button type="button" class="${base.side === 'out' ? 'on' : ''}" data-a="fside" data-s="out">${esc(t('outside'))}</button></div></div>
+      ${deptsOf(p).length ? `<div class="field" id="fDeptWrap" ${base.side === 'out' ? 'hidden' : ''}><label for="fDept">${esc(t('dept'))}</label><select class="in" id="fDept"><option value="">${esc(t('noDept'))}</option>${deptsOf(p).map(d => `<option ${base.dept === d ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></div>` : ''}
       ${(p.categories || []).length ? `<div class="field"><label for="fCat">${esc(t('category'))}</label><select class="in" id="fCat"><option value="">${esc(t('noCat'))}</option>${p.categories.map(c => `<option ${base.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>` : ''}
       <div class="field"><label>${esc(t('members'))} <span class="muted" style="font-weight:400">· ${esc(t('firstIsHead'))}</span></label><div class="stack" id="memList">${base.members.map((m, i) => memberRow(m, p, i)).join('')}</div>
       <button type="button" class="btn ghost" data-a="memAdd" style="margin-top:4px">${ic('plus')}${esc(t('addMember'))}</button></div>
@@ -448,7 +422,7 @@ function openFamily(id){
 }
 function openFamilyView(f){
   const p = prog();
-  openSheet({ title: famName(f), body: () => `<div class="small muted">${[f.cat, f.side === 'out' ? t('outside') : t('inside'), f.phone].filter(Boolean).map(esc).join(' · ')}</div>
+  openSheet({ title: famName(f), body: () => `<div class="small muted">${[f.cat, f.side === 'out' ? t('outside') : (f.dept || t('inside')), f.phone].filter(Boolean).map(esc).join(' · ')}</div>
     <div class="card" style="padding-block:4px"><div class="list">${(f.members || []).map((m, i) => `<div class="item">${avatar(m.name, i)}<div class="body"><div class="title">${esc(m.name || '—')}</div><div class="small muted">${[relLabel(m.rel), m.g === 'M' ? t('male') : m.g === 'F' ? t('female') : '', ageNum(m.age) != null ? nf(m.age) + ' ' + t('year') : ''].filter(Boolean).map(esc).join(' · ')}</div></div></div>`).join('')}</div></div>
     ${f.note ? `<div class="note-box note-body">${esc(f.note)}</div>` : ''}<div class="note-box small">${esc(t('readOnly'))}</div>` });
 }
@@ -457,7 +431,7 @@ async function saveFamily(id, root){
   d.members = d.members.filter(m => m.name);
   if (!d.members.length) { toast(t('needName')); $('.m-name', root) && $('.m-name', root).focus(); return; }
   const prev = id ? S.fam.find(x => x.id === id) : null;
-  const doc = Object.assign({}, d, { createdAt: prev ? prev.createdAt || Date.now() : Date.now(), updatedAt: Date.now(), by: myName() });
+  const doc = Object.assign({}, prev ? { bus: prev.bus || '' } : {}, d, { createdAt: prev ? prev.createdAt || Date.now() : Date.now(), updatedAt: Date.now(), by: myName() });
   const fid = id || DB.rid();
   if (await commit(id ? 'editFamily' : 'addFamily', [{ path: famPath(), id: fid, data: doc }])) closeSheet();
 }
@@ -557,6 +531,7 @@ function moreView(){
     ${p && isAdmin() ? item('ageGroups', 'baby', t('ageGroups'), (p.ageGroups || []).map(g => g.name).join(', ')) : ''}
     ${p && isAdmin() ? item('giftGroups', 'gift', t('giftGroups'), (p.giftGroups || []).map(g => g.name).join(', ')) : ''}
     ${p && isAdmin() ? item('rates', 'coins', t('rates'), (p.rates || []).map(r => r.name).join(', ')) : ''}
+    ${p && isAdmin() ? item('depts', 'building', t('depts'), deptsOf(p).join(', ')) : ''}
     ${p && isAdmin() ? item('cats', 'tag', t('categories'), (p.categories || []).join(', ')) : ''}
   </div></section>
   <section class="card" style="padding-block:4px"><div class="list">
@@ -601,7 +576,7 @@ async function saveProg(id, root){
   let doc = Object.assign({}, prev ? strip(prev) : { ageGroups:[], rates:[], categories: P.lang === 'bn' ? ['কনসালটেন্ট','ডাক্তার','সিস্টার','স্টাফ','অতিথি'] : ['Consultant','Doctor','Sister','Staff','Guest'], createdAt: Date.now(), createdBy: myName() },
     { name, type, date: $('#gDate', root).value, venue: $('#gVenue', root).value.trim(), note: $('#gNote', root).value.trim(), updatedAt: Date.now() });
   const copy = $('#gCopy', root) && $('#gCopy', root).value;
-  if (copy) { const src = S.programs.find(x => x.id === copy); if (src) { doc.ageGroups = JSON.parse(JSON.stringify(src.ageGroups || [])); doc.giftGroups = JSON.parse(JSON.stringify(src.giftGroups || [])); doc.buses = JSON.parse(JSON.stringify(src.buses || [])); doc.rates = JSON.parse(JSON.stringify(src.rates || [])); doc.categories = (src.categories || []).slice(); } }
+  if (copy) { const src = S.programs.find(x => x.id === copy); if (src) { doc.ageGroups = JSON.parse(JSON.stringify(src.ageGroups || [])); doc.giftGroups = JSON.parse(JSON.stringify(src.giftGroups || [])); doc.buses = JSON.parse(JSON.stringify(src.buses || [])); if (Array.isArray(src.depts)) doc.depts = src.depts.slice(); if (src.seatAge != null) doc.seatAge = src.seatAge; if (Array.isArray(src.dash)) doc.dash = JSON.parse(JSON.stringify(src.dash)); doc.rates = JSON.parse(JSON.stringify(src.rates || [])); doc.categories = (src.categories || []).slice(); } }
   const pid = id || DB.rid(); const ops = [{ path:'programs', id: pid, data: doc }];
   if (copy) { try { const src = await DB.getAll(`programs/${copy}/budgets`); const map = {}; src.forEach(b => { map[b.id] = DB.rid(); });
     src.forEach(b => { const d = strip(b); d.parent = d.parent ? (map[d.parent] || '') : ''; d.at = Date.now(); ops.push({ path: `programs/${pid}/budgets`, id: map[b.id], data: d }); });
@@ -686,8 +661,8 @@ async function saveUser(id, root){
 }
 
 /* ---------- history ---------- */
-const LABELS = { bn:{ addUser:'ব্যবহারকারী যোগ', addFamily:'পরিবার যোগ', editFamily:'পরিবার সম্পাদনা', delFamily:'পরিবার মুছে ফেলা', addPayment:'টাকা জমা', editPayment:'জমা সম্পাদনা', delPayment:'জমা মুছে ফেলা', addNote:'নোট যোগ', editNote:'নোট সম্পাদনা', delNote:'নোট মুছে ফেলা', addProgram:'প্রোগ্রাম যোগ', editProgram:'প্রোগ্রাম সম্পাদনা', delProgram:'প্রোগ্রাম মুছে ফেলা', editUser:'ব্যবহারকারী সম্পাদনা', addBudget:'বাজেট খাত যোগ', editBudget:'বাজেট খাত সম্পাদনা', delBudget:'বাজেট খাত মুছে ফেলা', addExpense:'খরচ যোগ', editExpense:'খরচ সম্পাদনা', delExpense:'খরচ মুছে ফেলা', addSponsor:'স্পন্সর যোগ', editSponsor:'স্পন্সর সম্পাদনা', delSponsor:'স্পন্সর মুছে ফেলা', addTransfer:'লেনদেন যোগ', editTransfer:'লেনদেন সম্পাদনা', delTransfer:'লেনদেন মুছে ফেলা', addGift:'উপহার যোগ', editGift:'উপহার সম্পাদনা', delGift:'উপহার মুছে ফেলা', giveGift:'উপহার দেওয়ার চিহ্ন' },
-  en:{ addUser:'User added', addFamily:'Family added', editFamily:'Family edited', delFamily:'Family deleted', addPayment:'Payment added', editPayment:'Payment edited', delPayment:'Payment deleted', addNote:'Note added', editNote:'Note edited', delNote:'Note deleted', addProgram:'Program added', editProgram:'Program edited', delProgram:'Program deleted', editUser:'User edited', addBudget:'Budget line added', editBudget:'Budget line edited', delBudget:'Budget line deleted', addExpense:'Expense added', editExpense:'Expense edited', delExpense:'Expense deleted', addSponsor:'Sponsor added', editSponsor:'Sponsor edited', delSponsor:'Sponsor deleted', addTransfer:'Transfer added', editTransfer:'Transfer edited', delTransfer:'Transfer deleted', addGift:'Gift added', editGift:'Gift edited', delGift:'Gift deleted', giveGift:'Gift handed out' } };
+const LABELS = { bn:{ addUser:'ব্যবহারকারী যোগ', addFamily:'পরিবার যোগ', editFamily:'পরিবার সম্পাদনা', delFamily:'পরিবার মুছে ফেলা', addPayment:'টাকা জমা', editPayment:'জমা সম্পাদনা', delPayment:'জমা মুছে ফেলা', addNote:'নোট যোগ', editNote:'নোট সম্পাদনা', delNote:'নোট মুছে ফেলা', addProgram:'প্রোগ্রাম যোগ', editProgram:'প্রোগ্রাম সম্পাদনা', editDepts:'বিভাগ বদল', delProgram:'প্রোগ্রাম মুছে ফেলা', editUser:'ব্যবহারকারী সম্পাদনা', addBudget:'বাজেট খাত যোগ', editBudget:'বাজেট খাত সম্পাদনা', delBudget:'বাজেট খাত মুছে ফেলা', addExpense:'খরচ যোগ', editExpense:'খরচ সম্পাদনা', delExpense:'খরচ মুছে ফেলা', addSponsor:'স্পন্সর যোগ', editSponsor:'স্পন্সর সম্পাদনা', delSponsor:'স্পন্সর মুছে ফেলা', addTransfer:'লেনদেন যোগ', editTransfer:'লেনদেন সম্পাদনা', delTransfer:'লেনদেন মুছে ফেলা', addGift:'উপহার যোগ', editGift:'উপহার সম্পাদনা', delGift:'উপহার মুছে ফেলা', giveGift:'উপহার দেওয়ার চিহ্ন' },
+  en:{ addUser:'User added', addFamily:'Family added', editFamily:'Family edited', delFamily:'Family deleted', addPayment:'Payment added', editPayment:'Payment edited', delPayment:'Payment deleted', addNote:'Note added', editNote:'Note edited', delNote:'Note deleted', addProgram:'Program added', editDepts:'Departments changed', editProgram:'Program edited', delProgram:'Program deleted', editUser:'User edited', addBudget:'Budget line added', editBudget:'Budget line edited', delBudget:'Budget line deleted', addExpense:'Expense added', editExpense:'Expense edited', delExpense:'Expense deleted', addSponsor:'Sponsor added', editSponsor:'Sponsor edited', delSponsor:'Sponsor deleted', addTransfer:'Transfer added', editTransfer:'Transfer edited', delTransfer:'Transfer deleted', addGift:'Gift added', editGift:'Gift edited', delGift:'Gift deleted', giveGift:'Gift handed out' } };
 function openHistory(){
   openSheet({ title: t('history'), body: () => S.undo.length ? `<div class="card" style="padding-block:4px"><div class="list">${S.undo.slice().reverse().map((e, i) => `<div class="item"><div class="body"><div class="title">${esc((LABELS[P.lang] || LABELS.bn)[e.label] || e.label)}</div><div class="small muted">${esc(new Date(e.at).toLocaleTimeString(P.lang === 'bn' ? 'bn-BD' : 'en-GB', {hour:'numeric', minute:'2-digit'}))}</div></div>${i === 0 ? `<button class="btn sm" data-a="undo">${ic('undo')}${esc(t('undo'))}</button>` : ''}</div>`).join('')}</div></div>` : `<p class="muted">${esc(t('noHistory'))}</p>` });
 }
@@ -1020,9 +995,9 @@ function giftText(g){
   inf.rec.forEach(({ m, f }, i) => L.push(`${nf(i + 1)}. ${(g.given || {})[m.id] ? '✅' : '⬜'} ${m.name || '—'}${m.id === (f.members[0] || {}).id ? '' : ` (${famName(f)})`}`));
   return L.join('\n');
 }
-function giftCard(){
+function giftCard(c){
   if (!S.gifts.length) return ''; const T = giftTotals();
-  return `<section class="card tap" data-a="tab" data-v="spend" data-spend="gift" role="button" tabindex="0"><div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(t('gifts'))}</h3><span class="small muted num">${esc(t('given'))} ${nf(T.given)} / ${nf(T.need)}</span></div>
+  return `<section class="card tap" data-a="tab" data-v="spend" data-spend="gift" role="button" tabindex="0"><div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(c ? dashTitle(c) : t('gifts'))}</h3><span class="small muted num">${esc(t('given'))} ${nf(T.given)} / ${nf(T.need)}</span></div>
     <div class="bar thin" style="margin-top:10px"><i class="ok" style="width:${T.need ? Math.min(100, T.given / T.need * 100) : 0}%"></i></div>
     <div class="small muted num" style="margin-top:6px">${esc(t('need'))} ${nf(T.need)} · ${esc(t('bought'))} ${nf(T.bought)}</div></section>`;
 }
@@ -1045,14 +1020,16 @@ function buildWorkbook(){
     [t('due'), s.due], [t('collected'), s.paid], [t('remaining'), Math.max(0, s.due - s.paid)], [t('spCashRecv'), m.spRecv], [t('spPromised'), m.spProm], [],
     [t('income'), m.income], [t('spent'), m.spent], [t('budTotal'), bt.total], [m.bal >= 0 ? t('inHand') : t('deficit'), Math.abs(m.bal)]].concat(p.note ? [[], [t('progNote'), p.note]] : []));
   const gr = p.ageGroups || [];
-  add(t('t_people'), [['#', t('name'), t('relation'), t('famHead'), t('side'), t('category'), t('gender'), t('age'), t('group'), t('rate'), t('phone')]].concat(
-    persons().map(({ m: mm, f }, i) => { const r = rateFor(mm, f, p); return [i + 1, mm.name || '', relLabel(mm.rel), famName(f), f.side === 'out' ? t('outsideShort') : t('inside'), f.cat || '', mm.g === 'M' ? t('male') : mm.g === 'F' ? t('female') : '', ageNum(mm.age), gr.filter(G => inRange(ageNum(mm.age), G.min, G.max)).map(G => G.name).join(', '), r ? r.name : t('noRate'), f.phone || '']; })));
+  add(t('t_people'), [['#', t('name'), t('relation'), t('famHead'), t('side'), t('category'), t('dept'), t('gender'), t('age'), t('group'), t('rate'), t('phone')]].concat(
+    persons().map(({ m: mm, f }, i) => { const r = rateFor(mm, f, p); return [i + 1, mm.name || '', relLabel(mm.rel), famName(f), f.side === 'out' ? t('outsideShort') : t('inside'), f.cat || '', deptName(f), mm.g === 'M' ? t('male') : mm.g === 'F' ? t('female') : '', ageNum(mm.age), gr.filter(G => inRange(ageNum(mm.age), G.min, G.max)).map(G => G.name).join(', '), r ? r.name : t('noRate'), f.phone || '']; })));
   add(t('ageGroups'), [[t('group'), t('ageRangeH'), t('total'), t('male'), t('female'), t('inside'), t('outsideShort')]].concat(s.groups.map(G => [G.g.name, rangeLabel(G.g.min, G.g.max), G.total, G.m, G.f, G.inn, G.out])).concat(s.unknown ? [[t('unknownAge'), '', s.unknown]] : []));
-  { const G = busGroups(), rows = [[t('bus'), t('famHead'), t('people'), t('category'), t('side')]];
-    const put = (label, fams) => fams.forEach(f => rows.push([label, famName(f), famSize(f), f.cat || '', f.side === 'out' ? t('outsideShort') : t('inside')]));
+  { const G = busGroups(), rows = [[t('bus'), t('famHead'), t('people'), t('seatsNeed'), t('category'), t('side')]];
+    const put = (label, fams) => fams.forEach(f => rows.push([label, famName(f), famSize(f), famSeats(f), f.cat || '', f.side === 'out' ? t('outsideShort') : t('inside')]));
     G.bs.forEach(b => put(b.name, G.by[b.id])); put(t('ownCar'), G.own); put(t('unassigned'), G.none);
     if (G.bs.length || G.own.length) add(t('buses'), rows); }
-  add(t('t_chanda'), [[t('famHead'), t('category'), t('side'), t('people'), t('due'), t('collected'), t('remaining'), t('status')]].concat(S.fam.map(f => { const d = famDue(f, p), pd = famPaid(f.id); return [famName(f), f.cat || '', f.side === 'out' ? t('outsideShort') : t('inside'), (f.members || []).length, d, pd, Math.max(0, d - pd), t('st_' + famStatus(d, pd))]; })));
+  { const rows = [[t('dept'), t('families'), t('people'), t('due'), t('collected'), t('remaining')]];
+    deptStats().forEach(r => rows.push([r.name, r.fams, r.persons, r.due, r.paid, Math.max(0, r.due - r.paid)])); add(t('byDeptShort'), rows); }
+  add(t('t_chanda'), [[t('famHead'), t('category'), t('dept'), t('side'), t('people'), t('due'), t('collected'), t('remaining'), t('status')]].concat(S.fam.map(f => { const d = famDue(f, p), pd = famPaid(f.id); return [famName(f), f.cat || '', deptName(f), f.side === 'out' ? t('outsideShort') : t('inside'), (f.members || []).length, d, pd, Math.max(0, d - pd), t('st_' + famStatus(d, pd))]; })));
   add(t('payments'), [[t('date'), t('famHead'), t('amount'), t('method'), t('receivedBy'), t('note')]].concat(S.pay.map(x => { const f = S.fam.find(y => y.id === x.fid); return [x.date || '', f ? famName(f) : '', Number(x.amount) || 0, meth(x.method), x.recv || '', x.note || '']; })));
   add(t('sponsors'), [[t('company'), t('spKind'), t('amount'), t('items'), t('estValue'), t('status'), t('receivedBy'), t('date'), t('contact'), t('note')]].concat(S.sp.map(x => [x.company || '', x.kind === 'kind' ? t('k_kind') : t('k_cash'), x.kind === 'kind' ? 0 : Number(x.amount) || 0, x.items || '', Number(x.value) || 0, t('s_' + (x.status || 'promised')), x.recv || '', x.date || '', x.contact || '', x.note || ''])));
   const budRows = [[t('budName'), t('parentLine'), t('budAmount'), t('spent'), t('budLeft')]];
@@ -1185,16 +1162,18 @@ function busGroups(){
   return { bs, by, own, none };
 }
 const sumPeople = fs => fs.reduce((n, f) => n + famSize(f), 0);
+const sumSeats = fs => fs.reduce((n, f) => n + famSeats(f), 0);
 function busFamItem(f, i){
-  return `<div class="item tap" data-a="busAssign" data-id="${f.id}" role="button" tabindex="0">${avatar(famName(f), i)}<div class="body"><div class="title">${esc(famName(f))}</div><div class="small muted">${[f.cat, t('peopleN', nf(famSize(f)))].filter(Boolean).map(esc).join(' · ')}</div></div></div>`;
+  return `<div class="item tap" data-a="busAssign" data-id="${f.id}" role="button" tabindex="0">${avatar(famName(f), i)}<div class="body"><div class="title">${esc(famName(f))}</div><div class="small muted">${[f.cat, famSeats(f) === famSize(f) ? t('peopleN', nf(famSize(f))) : t('peopleSeats', nf(famSize(f)), nf(famSeats(f)))].filter(Boolean).map(esc).join(' · ')}</div></div></div>`;
 }
 function busView(){
   const G = busGroups(), canSet = can('members');
   if (!G.bs.length) return `<div class="sec-h"><h2>${esc(t('buses'))}</h2></div>` + emptyBox('bus', t('noBuses'), isAdmin() ? `<button class="btn" data-a="busSetup">${ic('plus')}${esc(t('busSetup'))}</button>` : '');
-  const card = (title, fams, cap, cls) => `<section class="card" style="padding-block:6px"><div class="row" style="justify-content:space-between;margin:4px 0"><h3 style="margin:0">${esc(title)}</h3><span class="pill ${cls || 'info'}">${esc(t('peopleN', nf(sumPeople(fams))))}${cap ? ` / ${nf(cap)}` : ''}</span></div>
-    ${cap ? `<div class="bar thin"><i class="${sumPeople(fams) > cap ? 'bad' : sumPeople(fams) >= cap * 0.9 ? 'warn' : 'ok'}" style="width:${Math.min(100, Math.round(sumPeople(fams) * 100 / cap))}%"></i></div>` : ''}
+  const card = (title, fams, cap, cls) => `<section class="card" style="padding-block:6px"><div class="row" style="justify-content:space-between;margin:4px 0"><h3 style="margin:0">${esc(title)}</h3><span class="pill ${cls || 'info'}">${esc(t('seatsN', nf(sumSeats(fams))))}${cap ? ` / ${nf(cap)}` : ''}</span></div>
+    ${cap ? `<div class="bar thin"><i class="${sumSeats(fams) > cap ? 'bad' : sumSeats(fams) >= cap * 0.9 ? 'warn' : 'ok'}" style="width:${Math.min(100, Math.round(sumSeats(fams) * 100 / cap))}%"></i></div>` : ''}
     ${fams.length ? `<div class="list">${fams.map(busFamItem).join('')}</div>` : `<p class="muted small" style="margin:6px 0">${esc(t('busEmpty'))}</p>`}</section>`;
   return `<div class="sec-h"><h2>${esc(t('buses'))}</h2><span class="small muted">${esc(t('famN', nf(S.fam.length)))}</span></div>
+  <div class="note-box small">${esc((q => t('seatSummary', nf(q.need), nf(q.free), nf(q.own), nf(seatAgeOf(prog()))))(seatStats()))}</div>
   <div class="row" style="flex-wrap:wrap">
     ${canSet ? `<button class="btn" data-a="busDraw">${ic('shuffle')}${esc(t('busDraw'))}</button>` : ''}
     <button class="btn ghost" data-a="busShare">${ic('share')}${esc(t('share'))}</button>
@@ -1208,8 +1187,8 @@ function busView(){
 function openBusAssign(id){
   const f = S.fam.find(x => x.id === id); if (!f) return; const G = busGroups(), cur = busOf(f);
   const opt = (v, label, sub) => `<button class="btn ${cur === v ? '' : 'ghost'} block" style="justify-content:space-between" data-a="busSet" data-id="${f.id}" data-v="${esc(v)}"><span>${esc(label)}</span><span class="small">${esc(sub || '')}</span></button>`;
-  openSheet({ title: famName(f), body: () => `<p class="small muted" style="margin:0">${esc(t('peopleN', nf(famSize(f))))}</p><div class="stack">
-    ${G.bs.map(b => opt(b.id, b.name, `${nf(sumPeople(G.by[b.id]))}${Number(b.cap) ? ' / ' + nf(b.cap) : ''}`)).join('')}${opt('own', t('ownCar'), nf(sumPeople(G.own)))}${opt('', t('unassigned'), '')}</div>` });
+  openSheet({ title: famName(f), body: () => `<p class="small muted" style="margin:0">${esc(t('peopleSeats', nf(famSize(f)), nf(famSeats(f))))}</p><div class="stack">
+    ${G.bs.map(b => opt(b.id, b.name, `${nf(sumSeats(G.by[b.id]))}${Number(b.cap) ? ' / ' + nf(b.cap) : ''}`)).join('')}${opt('own', t('ownCar'), nf(sumPeople(G.own)))}${opt('', t('unassigned'), '')}</div>` });
 }
 async function setBus(id, v){
   const f = S.fam.find(x => x.id === id); if (!f || !can('members')) return;
@@ -1219,11 +1198,11 @@ async function setBus(id, v){
 function randInt(n){ if (window.crypto && crypto.getRandomValues) { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; } return Math.floor(Math.random() * n); }
 function drawBuses(){
   const G = busGroups(); if (!G.bs.length || !G.none.length) { toast(t('busNothing')); return; }
-  const load = {}; G.bs.forEach(b => { load[b.id] = sumPeople(G.by[b.id]); });
+  const load = {}; G.bs.forEach(b => { load[b.id] = sumSeats(G.by[b.id]); });
   const pool = G.none.slice(); for (let i = pool.length - 1; i > 0; i--) { const j = randInt(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
   const ops = []; let skipped = 0;
   pool.forEach(f => {
-    const s = famSize(f), fit = G.bs.filter(b => !Number(b.cap) || load[b.id] + s <= Number(b.cap)); if (!fit.length) { skipped++; return; }
+    const s = famSeats(f), fit = G.bs.filter(b => !Number(b.cap) || load[b.id] + s <= Number(b.cap)); if (!fit.length) { skipped++; return; }
     const min = Math.min(...fit.map(b => load[b.id])), low = fit.filter(b => load[b.id] === min), b = low[randInt(low.length)];
     load[b.id] += s; ops.push({ path: famPath(), id: f.id, data: Object.assign(strip(f), { bus: b.id, updatedAt: Date.now() }) });
   });
@@ -1232,7 +1211,7 @@ function drawBuses(){
 }
 function busText(){
   const p = prog(), G = busGroups(), L = [`*${p.name}* — ${t('buses')}`, ''];
-  const blk = (title, fams, cap) => { L.push(`*${title}* (${t('peopleN', nf(sumPeople(fams)))}${cap ? ' / ' + nf(cap) : ''})`); if (!fams.length) L.push('—'); fams.forEach((f, i) => L.push(`${nf(i + 1)}. ${famName(f)} (${nf(famSize(f))})`)); L.push(''); };
+  const blk = (title, fams, cap) => { L.push(`*${title}* (${t('seatsN', nf(sumSeats(fams)))}${cap ? ' / ' + nf(cap) : ''})`); if (!fams.length) L.push('—'); fams.forEach((f, i) => L.push(`${nf(i + 1)}. ${famName(f)} (${nf(famSize(f))})`)); L.push(''); };
   G.bs.forEach(b => blk(b.name, G.by[b.id], Number(b.cap) || 0)); blk(t('ownCar'), G.own, 0); if (G.none.length) blk(t('unassigned'), G.none, 0);
   return L.join('\n').trim();
 }
@@ -1243,8 +1222,171 @@ function busRow(b){
 }
 function openBusSetup(){
   const bs = busList();
-  openSheet({ title: t('busSetup'), body: () => `<p class="small muted" style="margin:0">${esc(t('busHint'))}</p><div class="stack" id="rows">${bs.map(busRow).join('')}</div><button type="button" class="btn ghost" data-a="busAdd">${ic('plus')}${esc(t('addBus'))}</button>`,
+  openSheet({ title: t('busSetup'), body: () => `<p class="small muted" style="margin:0">${esc(t('busHint'))}</p><div class="field"><label for="busSeatAge">${esc(t('seatAge'))}</label><input class="in" id="busSeatAge" inputmode="decimal" value="${esc(seatAgeOf(prog()))}"><span class="small muted">${esc(t('seatAgeHint'))}</span></div><div class="stack" id="rows">${bs.map(busRow).join('')}</div><button type="button" class="btn ghost" data-a="busAdd">${ic('plus')}${esc(t('addBus'))}</button>`,
     foot: () => `<button class="btn" data-a="busSave">${ic('check')}${esc(t('save'))}</button>` });
+}
+
+/* ================= phase 6: customizable dashboard ================= */
+const DASH_TYPES = { people:'totalPeople', depts:'byDept', seats:'busSeats', chanda:'t_chanda', money:'money', gifts:'gifts', ages:'byAge', cats:'byCat', note:'progNote', stat:'customCard' };
+const DASH_BUILTIN = ['people', 'depts', 'seats', 'chanda', 'money', 'gifts', 'ages', 'cats', 'note'];
+const dashDefault = () => DASH_BUILTIN.map(k => ({ id: k, type: k, size: 'full', title: '', cfg: {} }));
+const dashOf = p => Array.isArray((p || {}).dash) ? p.dash : dashDefault();
+const dashTitle = c => c.title || t(DASH_TYPES[c.type] || 'customCard');
+
+function metricCatalog(){
+  const s = stats(), q = seatStats(), m = money(), o = [];
+  const add = (g, k, label, v, isMoney) => o.push({ g, k, label, v, money: !!isMoney });
+  const g1 = t('totalPeople'), g2 = t('t_chanda'), g3 = t('money'), g4 = t('busSeats'), g5 = t('byDeptShort'), g6 = t('byCat'), g7 = t('byAge');
+  add(g1, 'persons', t('totalPeople'), s.persons); add(g1, 'fams', t('families'), s.fams); add(g1, 'inn', t('inside'), s.inn); add(g1, 'out', t('outsideShort'), s.out); add(g1, 'm', t('male'), s.m); add(g1, 'f', t('female'), s.f);
+  add(g2, 'due', t('due'), s.due, 1); add(g2, 'paid', t('collected'), s.paid, 1); add(g2, 'rem', t('remaining'), Math.max(0, s.due - s.paid), 1);
+  add(g3, 'income', t('income'), m.income, 1); add(g3, 'spent', t('spent'), m.spent, 1); add(g3, 'bal', m.bal >= 0 ? t('inHand') : t('deficit'), Math.abs(m.bal), 1);
+  add(g4, 'seatsNeed', t('seatsNeed'), q.need); add(g4, 'seatsFree', t('noSeat'), q.free); add(g4, 'seatsOwn', t('ownCarP'), q.own);
+  deptStats().forEach(r => { if (r.key === '' && !r.fams) return; add(g5, 'd:' + r.key, r.name + ' · ' + t('people'), r.persons); add(g5, 'dp:' + r.key, r.name + ' · ' + t('collected'), r.paid, 1); });
+  Object.keys(s.cats).forEach(c => add(g6, 'c:' + c, (c || t('noCat')) + ' · ' + t('people'), s.cats[c].persons));
+  s.groups.forEach(G => add(g7, 'a:' + G.g.id, G.g.name + ' (' + rangeLabel(G.g.min, G.g.max) + ')', G.total));
+  return o;
+}
+
+const DR = {
+  people: c => {
+    const p = prog(), s = stats();
+    const tile = (k, v, cls) => `<div class="tile ${cls || ''}"><div class="k">${esc(k)}</div><div class="v num ${cls ? 'brand' : ''}">${v}</div></div>`;
+    return `<section class="hero-card" aria-label="${esc(p.name)}">${c.title ? `<h3 style="margin:0">${esc(c.title)}</h3>` : ''}
+      <div class="row"><span class="pill info">${esc(t('ty_' + (p.type || 'other')))}</span>${p.date ? `<span class="row small muted" style="gap:4px"><span style="width:16px;height:16px;display:inline-flex">${ic('cal')}</span>${esc(fd(p.date))}</span>` : ''}${p.venue ? `<span class="row small muted" style="gap:4px"><span style="width:16px;height:16px;display:inline-flex">${ic('map')}</span>${esc(p.venue)}</span>` : ''}</div>
+      <div class="grid3">${tile(t('totalPeople'), nf(s.persons), 'brand')}${tile(t('families'), nf(s.fams))}${tile(t('inside'), nf(s.inn))}${tile(t('outsideShort'), nf(s.out))}${tile(t('male'), nf(s.m))}${tile(t('female'), nf(s.f))}</div>
+    </section>`;
+  },
+  depts: c => {
+    const ds = deptsOf(prog()); const rows = deptStats().filter(r => r.key !== '__out' && (r.fams || r.key !== ''));
+    const head = `<div class="row" style="justify-content:space-between;margin-bottom:10px"><h3 style="margin:0">${esc(dashTitle(c))}</h3>${isAdmin() ? `<button class="linkbtn small" data-a="depts">${esc(t('edit'))}</button>` : ''}</div>`;
+    if (!ds.length) return isAdmin() ? `<section class="card">${head}<p class="muted" style="margin:0 0 10px">${esc(t('noDeptsYet'))}</p><button class="btn sm" data-a="depts">${ic('plus')}${esc(t('addDept'))}</button></section>` : '';
+    return `<section class="card">${head}<div class="grid3">${rows.map(r => `<div class="tile"><div class="k">${esc(r.name)}</div><div class="v num">${nf(r.persons)}</div><div class="small muted">${esc(t('famN', nf(r.fams)))}</div></div>`).join('')}</div></section>`;
+  },
+  seats: c => {
+    if (!S.fam.length) return ''; const q = seatStats(), a = seatAgeOf(prog());
+    const tl = (k, v, sub) => `<div class="tile"><div class="k">${esc(k)}</div><div class="v num">${nf(v)}</div>${sub ? `<div class="small muted">${esc(sub)}</div>` : ''}</div>`;
+    return `<section class="card tap" data-a="tab" data-v="bus" role="button" tabindex="0"><h3>${esc(dashTitle(c))}</h3><div class="grid3">${tl(t('seatsNeed'), q.need)}${tl(t('noSeat'), q.free, t('underAge', nf(a)))}${tl(t('ownCarP'), q.own)}</div></section>`;
+  },
+  chanda: c => {
+    const s = stats(); const pct = s.due > 0 ? Math.min(100, Math.round(s.paid / s.due * 100)) : 0;
+    return `<section class="card tap" data-a="tab" data-v="income" data-inc="chanda" role="button" tabindex="0">
+      <div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(dashTitle(c))}</h3><span class="small muted num">${nf(pct)}%</span></div>
+      <div class="bar" style="margin:10px 0"><i style="width:${pct}%"></i></div>
+      <div class="grid3"><div><div class="small muted">${esc(t('due'))}</div><b class="num">${tk(s.due)}</b></div><div><div class="small muted">${esc(t('collected'))}</div><b class="num" style="color:var(--ok)">${tk(s.paid)}</b></div><div><div class="small muted">${esc(t('remaining'))}</div><b class="num" style="color:var(--bad)">${tk(Math.max(0, s.due - s.paid))}</b></div></div>
+      ${(c.cfg || {}).byDept === false ? '' : deptChandaHtml()}
+    </section>`;
+  },
+  money: c => moneyCard(c),
+  gifts: c => giftCard(c),
+  ages: c => {
+    const p = prog(), s = stats();
+    const tbl = (p.ageGroups || []).length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${esc(t('group'))}</th><th>${esc(t('total'))}</th><th>${esc(t('male'))}</th><th>${esc(t('female'))}</th><th>${esc(t('inside'))}</th><th>${esc(t('outsideShort'))}</th></tr></thead><tbody>
+      ${s.groups.map(G => `<tr><td><b>${esc(G.g.name)}</b><div class="small muted">${esc(rangeLabel(G.g.min, G.g.max))}</div></td><td><b>${nf(G.total)}</b></td><td>${nf(G.m)}</td><td>${nf(G.f)}</td><td>${nf(G.inn)}</td><td>${nf(G.out)}</td></tr>`).join('')}
+      ${s.unknown ? `<tr><td class="muted">${esc(t('unknownAge'))}</td><td>${nf(s.unknown)}</td><td></td><td></td><td></td><td></td></tr>` : ''}
+      </tbody></table></div>` : `<p class="muted" style="margin:0 0 10px">${esc(t('noGroups'))}</p>${isAdmin() ? `<button class="btn sm" data-a="ageGroups">${ic('baby')}${esc(t('setGroups'))}</button>` : ''}`;
+    return `<section class="card"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h3 style="margin:0">${esc(dashTitle(c))}</h3>${isAdmin() && (p.ageGroups || []).length ? `<button class="linkbtn small" data-a="ageGroups">${esc(t('edit'))}</button>` : ''}</div>${tbl}</section>`;
+  },
+  cats: c => {
+    const s = stats(); const cats = Object.keys(s.cats);
+    const tbl = cats.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${esc(t('category'))}</th><th>${esc(t('families'))}</th><th>${esc(t('people'))}</th><th>${esc(t('due'))}</th><th>${esc(t('collected'))}</th></tr></thead><tbody>
+      ${cats.map(k => { const x = s.cats[k]; return `<tr><td>${esc(k || t('noCat'))}</td><td>${nf(x.fams)}</td><td>${nf(x.persons)}</td><td>${tk(x.due)}</td><td>${tk(x.paid)}</td></tr>`; }).join('')}
+      </tbody><tfoot><tr><td>${esc(t('total'))}</td><td>${nf(s.fams)}</td><td>${nf(s.persons)}</td><td>${tk(s.due)}</td><td>${tk(s.paid)}</td></tr></tfoot></table></div>` : `<p class="muted" style="margin:0">${esc(t('noFamilies'))}</p>`;
+    return `<section class="card"><h3>${esc(dashTitle(c))}</h3>${tbl}</section>`;
+  },
+  note: c => { const p = prog(); return p.note ? `<section class="card note-card"><h3>${esc(dashTitle(c))}</h3><div class="note-body">${esc(p.note)}</div></section>` : ''; },
+  stat: c => {
+    const by = {}; metricCatalog().forEach(x => { by[x.k] = x; });
+    const ts = (((c.cfg || {}).items) || []).map(k => by[k]).filter(Boolean);
+    return `<section class="card"><h3>${esc(dashTitle(c))}</h3>${ts.length ? `<div class="grid3">${ts.map(x => `<div class="tile"><div class="k">${esc(x.label)}</div><div class="v num ${x.money ? 'sm' : ''}">${x.money ? tk(x.v) : nf(x.v)}</div></div>`).join('')}</div>` : `<p class="muted" style="margin:0">${esc(t('metricsNone'))}</p>`}</section>`;
+  }
+};
+
+function dashCardHtml(c, i, n, ed){
+  let body = (DR[c.type] || (() => ''))(c);
+  if (!body && !ed) return '';
+  if (!body) body = `<section class="card"><h3>${esc(dashTitle(c))}</h3><p class="muted" style="margin:0">${esc(t('emptyCard'))}</p></section>`;
+  const half = c.size === 'half';
+  const b = (a, ico, lbl, dis) => `<button type="button" class="ib" data-a="${a}" data-did="${esc(c.id)}" aria-label="${esc(lbl)}" ${dis ? 'disabled' : ''}>${ico}</button>`;
+  const tools = ed ? `<div class="dtool"><b class="dt">${esc(dashTitle(c))}</b><div class="dbtns">${b('dashUp', ic('up'), 'up', i === 0)}${b('dashDown', ic('down'), 'down', i === n - 1)}${b('dashSize', ic(half ? 'expand' : 'shrink'), half ? t('szBig') : t('szSmall'))}${b('dashEditCard', ic('edit'), t('edit'))}<button type="button" class="ib bad" data-a="dashDel" data-did="${esc(c.id)}" aria-label="${esc(t('del'))}">${ic('trash')}</button></div></div>` : '';
+  return `<div class="dcard ${half ? 'half' : 'full'}" data-did="${esc(c.id)}">${tools}<div class="dbody">${body}</div></div>`;
+}
+function homeView(){
+  const p = prog(), dash = dashOf(p), ed = isAdmin() && !!S.dashEdit;
+  const bar = !isAdmin() ? '' : ed
+    ? `<div class="dashbar edit"><span class="small">${esc(t('dashEditing'))}</span><div class="row" style="gap:8px"><button class="btn sm" data-a="dashAdd">${ic('plus')}${esc(t('addCard'))}</button><button class="btn ghost sm" data-a="dashMode">${ic('check')}${esc(t('doneBtn'))}</button></div></div>`
+    : `<div class="dashbar"><button class="linkbtn small" data-a="dashMode"><span class="dbi">${ic('sliders')}</span>${esc(t('customize'))}</button></div>`;
+  return `${bar}<div class="dash ${ed ? 'editing' : ''}">${dash.map((c, i) => dashCardHtml(c, i, dash.length, ed)).join('')}</div>${ed && !dash.length ? `<div class="empty">${esc(t('emptyDash'))}</div>` : ''}`;
+}
+const dashSet = (fn, extra) => { const d = JSON.parse(JSON.stringify(dashOf(prog()))); fn(d); return patchProg(Object.assign({ dash: d }, extra || {})); };
+function openDashAdd(){
+  openSheet({ title: t('addCard'), body: () => { const have = new Set(dashOf(prog()).map(c => c.type)); const miss = DASH_BUILTIN.filter(k => !have.has(k));
+    return `<div class="stack">${miss.map(k => `<button type="button" class="btn ghost block" data-a="dashAddType" data-type="${k}">${ic('plus')}${esc(t(DASH_TYPES[k]))}</button>`).join('')}
+      <button type="button" class="btn block" data-a="dashAddType" data-type="stat">${ic('plus')}${esc(t('customCard'))}</button>
+      <p class="small muted" style="margin:0">${esc(miss.length ? t('customCardHint') : t('noCardsLeft'))}</p>
+      <button type="button" class="linkbtn small" data-a="dashReset" style="text-align:left">${esc(t('resetDash'))}</button></div>`; } });
+}
+function openDashCard(id){
+  const p = prog(), c = dashOf(p).find(x => x.id === id); if (!c) return; const cfg = c.cfg || {};
+  let extra = '';
+  const short = (a, l) => `<button type="button" class="btn ghost block" data-a="${a}">${esc(l)}</button>`;
+  if (c.type === 'chanda') extra = `<label class="mchk"><input type="checkbox" id="dcDept" ${cfg.byDept === false ? '' : 'checked'}><span>${esc(t('showDeptSplit'))}</span></label>${short('rates', t('rates'))}${short('depts', t('depts'))}`;
+  else if (c.type === 'seats') extra = `<div class="field"><label for="dcSeatAge">${esc(t('seatAge'))}</label><input class="in" id="dcSeatAge" inputmode="decimal" value="${p.seatAge == null ? '' : esc(p.seatAge)}" placeholder="${nf(3)}"><div class="small muted">${esc(t('seatAgeHint'))}</div></div>`;
+  else if (c.type === 'depts') extra = short('depts', t('depts'));
+  else if (c.type === 'ages') extra = short('ageGroups', t('ageGroups'));
+  else if (c.type === 'cats') extra = short('cats', t('categories'));
+  else if (c.type === 'stat') {
+    const sel = new Set(cfg.items || []), groups = [];
+    metricCatalog().forEach(x => { let g = groups.find(y => y.g === x.g); if (!g) groups.push(g = { g: x.g, items: [] }); g.items.push(x); });
+    extra = `<p class="small muted" style="margin:0">${esc(t('customCardHint'))}</p>` + groups.map(g => `<div class="field"><label>${esc(g.g)}</label><div class="mlist">${g.items.map(x => `<label class="mchk"><input type="checkbox" data-mk="${esc(x.k)}" ${sel.has(x.k) ? 'checked' : ''}><span>${esc(x.label)}</span></label>`).join('')}</div></div>`).join('');
+  }
+  openSheet({ title: t('editCard'), body: () => `
+    <div class="field"><label for="dcTitle">${esc(t('cardTitle'))}</label><input class="in" id="dcTitle" value="${esc(c.title || '')}" placeholder="${esc(t(DASH_TYPES[c.type]))}"></div>
+    <div class="field"><label>${esc(t('cardSize'))}</label><div class="seg" id="dcSize"><button type="button" class="${c.size === 'half' ? 'on' : ''}" data-a="segPick" data-v="half">${esc(t('szHalf'))}</button><button type="button" class="${c.size === 'half' ? '' : 'on'}" data-a="segPick" data-v="full">${esc(t('szFull'))}</button></div></div>
+    ${extra ? `<div class="stack">${extra}</div>` : ''}`,
+    foot: () => `<button class="btn" data-a="dashSave" data-did="${esc(c.id)}">${ic('check')}${esc(t('save'))}</button>` });
+}
+
+/* ================= phase 5: departments, seats, tidy-ups ================= */
+const DEFAULT_DEPTS = ['MICU', 'SICU', 'HDU'];
+const deptsOf = p => Array.isArray((p || {}).depts) ? p.depts : DEFAULT_DEPTS;
+function deptKey(f){ if (f.side === 'out') return '__out'; return deptsOf(prog()).includes(f.dept) ? f.dept : ''; }
+const deptName = f => f.side === 'out' ? t('outsideShort') : (f.dept || t('noDept'));
+function deptStats(){
+  const p = prog() || {}, map = {}; const order = deptsOf(p).slice();
+  order.forEach(d => { map[d] = { key: d, name: d, fams: 0, persons: 0, due: 0, paid: 0 }; });
+  S.fam.forEach(f => {
+    const k = deptKey(f); if (!map[k]) map[k] = { key: k, name: k === '__out' ? t('outsideShort') : t('noDept'), fams: 0, persons: 0, due: 0, paid: 0 };
+    const x = map[k]; x.fams++; x.persons += famSize(f); x.due += famDue(f, p); x.paid += famPaid(f.id);
+  });
+  const rows = order.map(d => map[d]); if (map['__out']) rows.push(map['__out']); if (map['']) rows.push(map['']);
+  return rows;
+}
+function deptChandaHtml(){
+  if (!deptsOf(prog()).length) return '';
+  const rows = deptStats().filter(r => r.fams || deptsOf(prog()).includes(r.key)); if (!rows.length) return '';
+  return `<div class="deptbox"><div class="row" style="justify-content:space-between"><div class="small muted" style="font-weight:700">${esc(t('deptChanda'))}</div>${isAdmin() ? `<button class="linkbtn small" data-a="depts">${esc(t('edit'))}</button>` : ''}</div>${rows.map(r => { const pc = r.due > 0 ? Math.min(100, Math.round(r.paid / r.due * 100)) : 0;
+    return `<div class="drow"><span class="dn">${esc(r.name)} <span class="small muted">· ${esc(t('peopleN', nf(r.persons)))}</span></span><span class="num"><b style="color:var(--ok)">${tk(r.paid)}</b> <span class="muted small">/ ${tk(r.due)}</span></span></div><div class="bar thin"><i style="width:${pc}%"></i></div>`; }).join('')}</div>`;
+}
+const seatAgeOf = p => { const v = (p || {}).seatAge; return (v === undefined || v === null || v === '' || !isFinite(Number(v))) ? 3 : Number(v); };
+const famSeats = f => (f.members || []).filter(m => { const a = ageNum(m.age); return a == null || a >= seatAgeOf(prog()); }).length;
+function seatStats(){
+  const o = { need: 0, free: 0, own: 0 };
+  S.fam.forEach(f => { const n = famSize(f), s = famSeats(f); if (f.bus === 'own') o.own += n; else { o.need += s; o.free += n - s; } });
+  return o;
+}
+function deptRow(d){
+  const sb = 'style="background:var(--surface-2);color:var(--ink)"';
+  return `<div class="mem" data-old="${esc(d)}"><div class="mem-top"><input class="in d-name" value="${esc(d)}" placeholder="${esc(t('deptNameP'))}" aria-label="${esc(t('deptNameP'))}"><button type="button" class="iconbtn" ${sb} data-a="rowUp" aria-label="up">${ic('up')}</button><button type="button" class="iconbtn" ${sb} data-a="rowDown" aria-label="down">${ic('down')}</button><button type="button" class="iconbtn" style="background:var(--bad-soft);color:var(--bad)" data-a="rowDel" aria-label="${esc(t('del'))}">${ic('trash')}</button></div></div>`;
+}
+function openDepts(){
+  const p = prog();
+  openSheet({ title: t('depts'), body: () => `<p class="small muted" style="margin:0">${esc(t('deptHint'))}</p><div class="stack" id="rows">${deptsOf(p).map(deptRow).join('')}</div><button type="button" class="btn ghost" data-a="deptAdd">${ic('plus')}${esc(t('addDept'))}</button>`,
+    foot: () => `<button class="btn" data-a="deptsSave">${ic('check')}${esc(t('save'))}</button>` });
+}
+function syncChip(){
+  if (DB.mode !== 'firebase') return '';
+  const off = navigator.onLine === false, n = S.sync.pending, bad = off || n > 0;
+  return `<button class="syncchip ${bad ? 'warn' : 'ok'}" data-a="syncInfo" aria-label="${esc(off ? t('syncOff') : n > 0 ? t('syncPending', nf(n)) : t('syncOk'))}"><span style="width:14px;height:14px;display:inline-flex">${ic('cloud')}</span>${bad ? `<b>${n > 0 ? nf(n) : '!'}</b>` : ''}</button>`;
 }
 
 const A = {
@@ -1281,12 +1423,51 @@ const A = {
   ratesSave: async el => { const sh = el.closest('.sheet'); const rs = $$('[data-rid]', sh).map(r => ({ id: r.dataset.rid, name: $('.r-name', r).value.trim(), amount: parseNum($('.r-amt', r).value) || 0, side: $('.r-side', r).value, cat: $('.r-cat', r).value, min: parseNum($('.r-min', r).value), max: parseNum($('.r-max', r).value) })).filter(r => r.name);
     if (await patchProg({ rates: rs })) closeSheet(); },
   cats: () => openCats(),
+  depts: () => openDepts(),
+  deptAdd: el => { const sh = el.closest('.sheet'); $('#rows', sh).insertAdjacentHTML('beforeend', deptRow('')); $$('#rows .d-name', sh).pop().focus(); },
+  deptsSave: async el => {
+    const sh = el.closest('.sheet'), p = prog();
+    const rows = $$('[data-old]', sh).map(r => ({ old: r.dataset.old, nw: $('.d-name', r).value.trim() })).filter(r => r.nw);
+    const names = rows.map(r => r.nw);
+    if (new Set(names.map(x => x.toLowerCase())).size !== names.length) { toast(t('deptDup')); return; }
+    const map = Object.create(null); rows.forEach(r => { if (r.old) map[r.old] = r.nw; });
+    const removed = deptsOf(p).filter(d => !(d in map));
+    const ops = []; let cleared = 0;
+    S.fam.forEach(f => { if (f.side === 'out' || !f.dept) return; let nd = f.dept;
+      if (f.dept in map) nd = map[f.dept]; else if (removed.includes(f.dept)) nd = '';
+      if (nd !== f.dept) { if (!nd) cleared++; ops.push({ path: famPath(), id: f.id, data: Object.assign(strip(f), { dept: nd }) }); } });
+    const patch = { depts: names };
+    if (Array.isArray(p.dash)) patch.dash = p.dash.map(c => (c.type === 'stat' && c.cfg && Array.isArray(c.cfg.items)) ? Object.assign({}, c, { cfg: Object.assign({}, c.cfg, { items: c.cfg.items.map(k => { const m = /^(dp?):(.*)$/.exec(k); return (m && (m[2] in map)) ? m[1] + ':' + map[m[2]] : k; }) }) }) : c);
+    ops.unshift({ path: 'programs', id: p.id, data: Object.assign(strip(p), patch, { updatedAt: Date.now() }) });
+    const go = async () => { if (await commit('editDepts', ops)) closeSheet(); };
+    if (cleared) confirmBox(t('delDeptSure', cleared), go, t('yesRemove')); else go();
+  },
+  dashMode: () => { S.dashEdit = !S.dashEdit; render(); },
+  dashUp: el => dashSet(d => { const i = d.findIndex(x => x.id === el.dataset.did); if (i > 0) { const x = d[i]; d[i] = d[i - 1]; d[i - 1] = x; } }),
+  dashDown: el => dashSet(d => { const i = d.findIndex(x => x.id === el.dataset.did); if (i >= 0 && i < d.length - 1) { const x = d[i]; d[i] = d[i + 1]; d[i + 1] = x; } }),
+  dashSize: el => dashSet(d => { const c = d.find(x => x.id === el.dataset.did); if (c) c.size = c.size === 'half' ? 'full' : 'half'; }),
+  dashEditCard: el => openDashCard(el.dataset.did),
+  dashDel: el => { const c = dashOf(prog()).find(x => x.id === el.dataset.did); if (!c) return; const id = c.id;
+    confirmBox(t('delCardSure', dashTitle(c)), () => dashSet(d => { const i = d.findIndex(x => x.id === id); if (i >= 0) d.splice(i, 1); }), t('removeCard')); },
+  dashAdd: () => openDashAdd(),
+  dashAddType: async el => { const type = el.dataset.type, id = type === 'stat' ? DB.rid() : type;
+    if (await dashSet(d => { if (!d.some(x => x.id === id)) d.push({ id, type, size: 'full', title: '', cfg: type === 'stat' ? { items: [] } : {} }); })) { closeSheet(); if (type === 'stat') setTimeout(() => openDashCard(id), 120); } },
+  dashReset: () => confirmBox(t('resetDashSure'), async () => { if (await patchProg({ dash: dashDefault() })) closeSheet(); }, t('resetYes')),
+  dashSave: async el => { const sh = el.closest('.sheet'), id = el.dataset.did;
+    const d = JSON.parse(JSON.stringify(dashOf(prog()))); const c = d.find(x => x.id === id); if (!c) { closeSheet(); return; }
+    c.title = $('#dcTitle', sh).value.trim(); const on = $('#dcSize .on', sh); c.size = on && on.dataset.v === 'half' ? 'half' : 'full'; c.cfg = c.cfg || {};
+    const extra = {};
+    if (c.type === 'chanda') c.cfg.byDept = $('#dcDept', sh).checked;
+    if (c.type === 'seats') extra.seatAge = parseNum($('#dcSeatAge', sh).value);
+    if (c.type === 'stat') c.cfg.items = $$('[data-mk]', sh).filter(x => x.checked).map(x => x.dataset.mk);
+    if (await patchProg(Object.assign({ dash: d }, extra))) closeSheet(); },
+  syncInfo: () => toast(navigator.onLine === false ? t('syncOff') : S.sync.pending > 0 ? t('syncPending', nf(S.sync.pending)) : t('syncOk')),
   catsSave: async el => { const v = $('#catsTxt', el.closest('.sheet')).value.split('\n').map(x => x.trim()).filter(Boolean); if (await patchProg({ categories: Array.from(new Set(v)) })) closeSheet(); },
   pmode: el => { S.peopleMode = el.dataset.m; render(); },
   pside: el => { S.side = el.dataset.s; render(); },
   famNew: () => openFamily(null),
   famOpen: el => openFamily(el.dataset.id),
-  fside: el => { $$('[data-a="fside"]', el.parentNode).forEach(b => b.classList.toggle('on', b === el)); updateAutoLabels(el.closest('.sheet')); },
+  fside: el => { $$('[data-a="fside"]', el.parentNode).forEach(b => b.classList.toggle('on', b === el)); const dw = $('#fDeptWrap', el.closest('.sheet')); if (dw) dw.hidden = el.dataset.s === 'out'; updateAutoLabels(el.closest('.sheet')); },
   memAdd: el => { const sh = el.closest('.sheet'); const list = $('#memList', sh); list.insertAdjacentHTML('beforeend', memberRow({ id: DB.rid(), name:'', rel:'', g:'', age:null, rate:'' }, prog(), list.children.length)); $$('.m-name', list).pop().focus(); updateAutoLabels(sh); },
   memDel: el => { const sh = el.closest('.sheet'); el.closest('.mem').remove(); updateAutoLabels(sh); },
   famSave: el => saveFamily(el.dataset.id, el.closest('.sheet')),
@@ -1368,7 +1549,7 @@ const A = {
   busShare: () => openShare(busText(), t('buses')),
   busSetup: () => openBusSetup(),
   busAdd: el => { const sh = el.closest('.sheet'); const n = $$('[data-bid]', sh).length + 1; $('#rows', sh).insertAdjacentHTML('beforeend', busRow({ id: DB.rid(), name: t('busN', nf(n)), cap: null })); },
-  busSave: async el => { const sh = el.closest('.sheet'); const bs = $$('[data-bid]', sh).map(r => ({ id: r.dataset.bid, name: $('.b-name', r).value.trim(), cap: parseNum($('.b-cap', r).value) || null })).filter(b => b.name); if (await patchProg({ buses: bs })) closeSheet(); },
+  busSave: async el => { const sh = el.closest('.sheet'); const bs = $$('[data-bid]', sh).map(r => ({ id: r.dataset.bid, name: $('.b-name', r).value.trim(), cap: parseNum($('.b-cap', r).value) || null })).filter(b => b.name); if (await patchProg({ buses: bs, seatAge: parseNum($('#busSeatAge', sh).value) })) closeSheet(); },
   xlsxDown: () => exportExcel(false),
   xlsxShare: () => exportExcel(true),
   demoReset: () => confirmBox(t('resetDemoSure'), () => { DB.resetDemo(false, P.lang); S.undo = []; toast(t('saved')); }, t('resetDemo')),
@@ -1435,7 +1616,7 @@ window.PM_SEED = function(mem, rid, empty, lang){
     ['out', GST, [M(L('জনাব হাসান (নমুনা অতিথি)', 'Mr. Hasan (sample guest)'), SELF, 'M', 58), M(L('মিসেস হাসান', 'Mrs. Hasan'), WIFE, 'F', 54), M(L('ইফতি', 'Ifti'), SON, 'M', 8)]]
   ];
   const fp = `programs/${pid}/families`; c[fp] = {}; const ids = [];
-  fams.forEach(([side, cat, members], i) => { const id = 'f' + i; ids.push(id); c[fp][id] = { side, cat, phone:'', due:null, note: i === 0 ? L('দুপুরে নিরামিষ খাবার লাগবে (নমুনা নোট)', 'Needs a vegetarian lunch (sample note)') : '', members, createdAt: now + i, updatedAt: now + i, by: ADM }; });
+  fams.forEach(([side, cat, members], i) => { const id = 'f' + i; ids.push(id); c[fp][id] = { side, cat, dept: side === 'out' ? '' : ['MICU','SICU','HDU'][i % 3], phone:'', due:null, note: i === 0 ? L('দুপুরে নিরামিষ খাবার লাগবে (নমুনা নোট)', 'Needs a vegetarian lunch (sample note)') : '', members, createdAt: now + i, updatedAt: now + i, by: ADM }; });
   const pay = (fi, amount, date, method, recv) => ({ fid: ids[fi], amount, date, method, recv, note:'', at: now, by: ADM });
   c[`programs/${pid}/payments`] = { a1: pay(0, 5000, '2026-11-01', 'bkash', ADM), a2: pay(1, 2000, '2026-10-30', 'cash', ADM), a3: pay(2, 1000, '2026-10-29', 'cash', ORG), a4: pay(3, 1000, '2026-11-02', 'nagad', ADM), a5: pay(5, 3000, '2026-10-28', 'cash', ORG) };
   c[`programs/${pid}/notes`] = {
@@ -1476,5 +1657,5 @@ window.PM_SEED = function(mem, rid, empty, lang){
 /* ================= start ================= */
 applyPrefs(); render();
 if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.PM_NO_SW) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
-window.PM_TEST = { busGroups, drawBuses, busText, collectBackup, restoreBackup, giftGroupsOf, lcSave, evalExpr, autoRate, rateFor, famDue, inRange, parseNum, stats, S, buildWorkbook, giftInfo, ledger };
+window.PM_TEST = { dashOf, dashDefault, metricCatalog, deptStats, seatStats, famSeats, busGroups, drawBuses, busText, collectBackup, restoreBackup, giftGroupsOf, lcSave, evalExpr, autoRate, rateFor, famDue, inRange, parseNum, stats, S, buildWorkbook, giftInfo, ledger };
 })();
