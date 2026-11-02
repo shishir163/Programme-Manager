@@ -218,7 +218,7 @@ function startData(){
     S.profile = arr.find(u => u.id === S.user.uid) || null;
     if (!S.profile && DB.mode === 'firebase' && (S.user.email || '').toLowerCase() === ADMIN_EMAIL && !S._creatingAdmin) {
       S._creatingAdmin = true;
-      DB.set('users', S.user.uid, { name: P.lang === 'bn' ? 'অ্যাডমিন' : 'Admin', email: S.user.email, role:'admin', active:true, perms:{} });
+      DB.set('users', S.user.uid, { name: P.lang === 'bn' ? 'অ্যাডমিন' : 'Admin', email: S.user.email, role:'admin', active:true, perms:{} }).catch(err => { S.dbErr = (err && err.code) || 'error'; render(); });
     }
     render();
   }));
@@ -245,7 +245,7 @@ function setProgram(pid, silent){
   if (!silent) render();
 }
 DB.onAuth(u => {
-  S.user = u; S.authReady = true; S.profile = null; S.users = []; S.programs = []; S.loaded = {users:false, programs:false};
+  S.user = u; S.authReady = true; S.profile = null; S.dbErr = ''; S.users = []; S.programs = []; S.loaded = {users:false, programs:false};
   if (u) startData(); else { unsubs.forEach(f => f()); unsubs = []; progUnsubs.forEach(f => f()); progUnsubs = []; closeAll(); S.undo = []; }
   render();
 });
@@ -256,6 +256,7 @@ function render(){
   const app = $('#app');
   if (!S.authReady) { app.innerHTML = `<div class="empty" style="padding-top:30vh">${esc(t('loading'))}</div>`; return; }
   if (!S.user) { app.innerHTML = loginView(); return; }
+  if (S.dbErr && !S.profile) { app.innerHTML = dbErrView(); return; }
   if (!S.loaded.users) { app.innerHTML = `<div class="empty" style="padding-top:30vh">${esc(t('loading'))}</div>`; return; }
   if (!S.profile || S.profile.active === false) { app.innerHTML = noAccessView(); return; }
   const v = S.view;
@@ -308,6 +309,8 @@ function loginView(){
     <div class="seg" role="group" aria-label="${esc(t('language'))}"><button class="${P.lang === 'bn' ? 'on' : ''}" data-a="lang" data-l="bn">বাংলা</button><button class="${P.lang === 'en' ? 'on' : ''}" data-a="lang" data-l="en">English</button></div>
   </div></div></div>`;
 }
+function dbErrView(){ return `<div class="login"><div class="login-top"><div class="logo">${ic('shield')}</div><h1>${esc(t('appName'))}</h1></div><div class="login-card"><div><div class="err">${esc(t('e_db'))} ${esc(S.dbErr)}</div><button class="btn ghost block" data-a="signOut">${ic('logout')}${esc(t('signOut'))}</button></div></div></div>`; }
+window.addEventListener('pm-db-error', e => { if (S.user) { S.dbErr = (e.detail && e.detail.code) || 'error'; render(); } });
 function noAccessView(){ return `<div class="login"><div class="login-top"><div class="logo">${ic('shield')}</div><h1>${esc(t('appName'))}</h1></div><div class="login-card"><div><div class="err">${esc(t('noAccess'))}</div><button class="btn ghost block" data-a="signOut">${ic('logout')}${esc(t('signOut'))}</button></div></div></div>`; }
 function noProgramView(){
   if (!S.loaded.programs) return `<div class="empty">${esc(t('loading'))}</div>`;
@@ -1196,11 +1199,21 @@ document.addEventListener('input', e => {
   if (e.target.id === 'eq') { S.eq = e.target.value; const la = $('#listArea'); if (la) la.innerHTML = expList(); }
 });
 document.addEventListener('change', e => { if (e.target.id === 'pcat') { S.cat = e.target.value; render(); } if (e.target.id === 'expBud') { S.expBud = e.target.value; render(); } });
+function loginMsg(err){
+  const c = (err && err.code) || '';
+  if (/invalid-credential|wrong-password|user-not-found|invalid-email|missing-password|invalid-login/.test(c)) return t('loginErr');
+  if (c === 'auth/unauthorized-domain') return t('e_domain');
+  if (c === 'auth/operation-not-allowed') return t('e_notAllowed');
+  if (c === 'auth/network-request-failed') return t('e_network');
+  if (/api-key|invalid-app|app-not-authorized/.test(c)) return t('e_apiKey');
+  if (c === 'auth/too-many-requests') return t('e_many');
+  return t('e_other') + ' ' + (c || String(err && err.message || err));
+}
 document.addEventListener('submit', async e => {
   if (e.target.id !== 'loginForm') return; e.preventDefault();
   S.busy = true; S.loginErr = ''; render();
   try { await DB.signIn($('#lgEmail').value.trim(), $('#lgPass').value); S.busy = false; }
-  catch(err) { S.busy = false; S.loginErr = t('loginErr'); render(); }
+  catch(err) { S.busy = false; S.loginErr = loginMsg(err); render(); }
 });
 
 /* ================= demo sample data ================= */
