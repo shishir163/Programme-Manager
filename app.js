@@ -86,6 +86,7 @@ const I = {
   tag:'<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>',
   coins:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>',
   lang:'<path d="M4 5h8M8 3v2M5.5 5c.8 3.5 3.3 6 6.5 7.5M10.5 5C10 8 7.5 11 4 12.5"/><path d="m13 21 4-9 4 9M14.5 18h5"/>',
+  bus:'<rect x="3" y="4" width="18" height="13" rx="3"/><path d="M3 11h18M7 17v3M17 17v3"/><circle cx="7.5" cy="14" r=".8"/><circle cx="16.5" cy="14" r=".8"/>', shuffle:'<path d="M3 7h4c4 0 6 10 10 10h4M3 17h4c1.4 0 2.5-.8 3.4-2M14 8c.8-.7 1.7-1 3-1h4M18 4l3 3-3 3M18 14l3 3-3 3"/>', upload:'<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
   baby:'<circle cx="12" cy="7" r="3"/><path d="M8 21v-5l-3-2M16 21v-5l3-2M8 13c0-2 1.8-3 4-3s4 1 4 3v3H8z"/>',
   check:'<path d="m5 12 5 5 9-10"/>', gift:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M12 8S10.5 3 8 3.8C5.8 4.5 7 8 12 8zM12 8s1.5-5 4-4.2C18.2 4.5 17 8 12 8z"/>',
   download:'<path d="M12 3v12M7 10l5 5 5-5M4 20h16"/>', receipt:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
@@ -264,8 +265,9 @@ function render(){
   if (!S.loaded.users) { app.innerHTML = `<div class="empty" style="padding-top:30vh">${esc(t('loading'))}</div>`; return; }
   if (!S.profile || S.profile.active === false) { app.innerHTML = noAccessView(); return; }
   const v = S.view;
-  const body = !prog() && v !== 'more' ? noProgramView() : ({home:homeView, people:peopleView, income:incomeView, spend:spendView, notes:notesView, settle:settleView, more:moreView}[v] || homeView)();
+  const body = !prog() && v !== 'more' ? noProgramView() : ({home:homeView, people:peopleView, income:incomeView, spend:spendView, notes:notesView, settle:settleView, bus:busView, more:moreView}[v] || homeView)();
   app.innerHTML = `${bandView()}<main class="wrap" id="main">${body}</main>${fabView()}${tabsView()}`;
+  lcSchedule();
 }
 function renderBandOnly(){ const b = $('.band'); if (b) b.outerHTML = bandView(); }
 function bandView(){
@@ -275,11 +277,11 @@ function bandView(){
       <button class="prog" data-a="progPicker" aria-label="${esc(t('chooseProgram'))}"><span>${esc(p ? p.name : t('allPrograms'))}</span>${ic('down')}</button></div>
     ${S.undo.length ? `<button class="iconbtn" data-a="undo" aria-label="${esc(t('undo'))}" title="${esc(t('undo'))}">${ic('undo')}</button>` : ''}
     ${p ? `<button class="iconbtn" data-a="shareSummary" aria-label="${esc(t('shareSummary'))}" title="${esc(t('shareSummary'))}">${ic('share')}</button>` : ''}
-  </div>${DB.mode === 'demo' ? `<div class="demo-flag"><span>${esc(t('demoShort'))}</span><b>${esc(isAdmin() ? t('r_admin') : t('r_org'))}</b></div>` : ''}<div class="bunting" aria-hidden="true">${BUNTING}</div></header>`;
+  </div>${syncStrip()}${DB.mode === 'demo' ? `<div class="demo-flag"><span>${esc(t('demoShort'))}</span><b>${esc(isAdmin() ? t('r_admin') : t('r_org'))}</b></div>` : ''}<div class="bunting" aria-hidden="true">${BUNTING}</div></header>`;
 }
 function tabsView(){
   const tabs = [['home','home'],['people','users'],['income','wallet'],['spend','receipt'],['more','more']];
-  const cur = ['notes','settle'].includes(S.view) ? 'more' : S.view;
+  const cur = ['notes','settle','bus'].includes(S.view) ? 'more' : S.view;
   return `<nav class="tabs" aria-label="menu"><div class="tabs-in">${tabs.map(([k, i]) => `<button class="tab ${cur === k ? 'on' : ''}" data-a="tab" data-v="${k}" ${cur === k ? 'aria-current="page"' : ''}>${ic(i)}<span>${esc(t('t_' + k))}</span></button>`).join('')}</div></nav>`;
 }
 function fabView(){
@@ -315,7 +317,7 @@ function loginView(){
 }
 function dbErrView(){ return `<div class="login"><div class="login-top"><div class="logo">${ic('shield')}</div><h1>${esc(t('appName'))}</h1></div><div class="login-card"><div><div class="err">${esc(t('e_db'))} ${esc(S.dbErr)}</div><button class="btn ghost block" data-a="signOut">${ic('logout')}${esc(t('signOut'))}</button></div></div></div>`; }
 window.addEventListener('pm-auth-error', e => { S.busy = false; S.loginErr = loginMsg(e.detail); render(); });
-window.addEventListener('pm-db-error', e => { if (S.user) { S.dbErr = (e.detail && e.detail.code) || 'error'; render(); } });
+window.addEventListener('pm-db-error', e => { if (!S.user) return; S.dbErr = (e.detail && e.detail.code) || 'error'; if (S.profile) { if (S._dbToast !== S.dbErr) toast(t('readFail') + ' ' + S.dbErr); S._dbToast = S.dbErr; } render(); });
 function noAccessView(){ return `<div class="login"><div class="login-top"><div class="logo">${ic('shield')}</div><h1>${esc(t('appName'))}</h1></div><div class="login-card"><div><div class="err">${esc(t('noAccess'))}<br><b style="overflow-wrap:anywhere">${esc((S.user && S.user.email) || '')}</b></div><button class="btn ghost block" data-a="signOut">${ic('logout')}${esc(t('signOut'))}</button></div></div></div>`; }
 function noProgramView(){
   if (!S.loaded.programs) return `<div class="empty">${esc(t('loading'))}</div>`;
@@ -553,6 +555,7 @@ function moreView(){
     ${item('progPicker', 'grid', t('allPrograms'), p ? p.name : '')}
     ${p && isAdmin() ? item('progEdit', 'edit', t('basicInfo'), [t('ty_' + (p.type || 'other')), fd(p.date)].filter(Boolean).join(' · ')) : ''}
     ${p && isAdmin() ? item('ageGroups', 'baby', t('ageGroups'), (p.ageGroups || []).map(g => g.name).join(', ')) : ''}
+    ${p && isAdmin() ? item('giftGroups', 'gift', t('giftGroups'), (p.giftGroups || []).map(g => g.name).join(', ')) : ''}
     ${p && isAdmin() ? item('rates', 'coins', t('rates'), (p.rates || []).map(r => r.name).join(', ')) : ''}
     ${p && isAdmin() ? item('cats', 'tag', t('categories'), (p.categories || []).join(', ')) : ''}
   </div></section>
@@ -561,7 +564,9 @@ function moreView(){
     ${p ? item('tab', 'scale', t('settle'), '', 'data-v="settle"') : ''}
     ${p ? item('tab', 'pie', t('budget'), tk(budTotals().total), 'data-v="spend" data-spend="bud"') : ''}
     ${p ? item('tab', 'gift', t('gifts'), nf(S.gifts.length), 'data-v="spend" data-spend="gift"') : ''}
+    ${p ? item('tab', 'bus', t('buses'), t('famN', nf(S.fam.filter(f => busOf(f)).length)) + ' / ' + nf(S.fam.length), 'data-v="bus"') : ''}
     ${p ? item('exportOpen', 'download', t('excel'), '') : ''}
+    ${item('backupOpen', 'history', t('backup'), '')}
     ${item('appearance', 'palette', t('appearance'), `${(THEMES.find(x => x.id === themeId()) || {})[P.lang] || ''} · ${(FONTS_BN.find(f => f.id === P.fontBn) || {}).name || ''}`)}
     ${isAdmin() ? item('usersOpen', 'shield', t('users'), t('peopleN', nf(S.users.length))) : ''}
     ${item('historyOpen', 'history', t('history'), S.undo.length ? nf(S.undo.length) : t('noHistory'))}
@@ -596,7 +601,7 @@ async function saveProg(id, root){
   let doc = Object.assign({}, prev ? strip(prev) : { ageGroups:[], rates:[], categories: P.lang === 'bn' ? ['কনসালটেন্ট','ডাক্তার','সিস্টার','স্টাফ','অতিথি'] : ['Consultant','Doctor','Sister','Staff','Guest'], createdAt: Date.now(), createdBy: myName() },
     { name, type, date: $('#gDate', root).value, venue: $('#gVenue', root).value.trim(), note: $('#gNote', root).value.trim(), updatedAt: Date.now() });
   const copy = $('#gCopy', root) && $('#gCopy', root).value;
-  if (copy) { const src = S.programs.find(x => x.id === copy); if (src) { doc.ageGroups = JSON.parse(JSON.stringify(src.ageGroups || [])); doc.rates = JSON.parse(JSON.stringify(src.rates || [])); doc.categories = (src.categories || []).slice(); } }
+  if (copy) { const src = S.programs.find(x => x.id === copy); if (src) { doc.ageGroups = JSON.parse(JSON.stringify(src.ageGroups || [])); doc.giftGroups = JSON.parse(JSON.stringify(src.giftGroups || [])); doc.buses = JSON.parse(JSON.stringify(src.buses || [])); doc.rates = JSON.parse(JSON.stringify(src.rates || [])); doc.categories = (src.categories || []).slice(); } }
   const pid = id || DB.rid(); const ops = [{ path:'programs', id: pid, data: doc }];
   if (copy) { try { const src = await DB.getAll(`programs/${copy}/budgets`); const map = {}; src.forEach(b => { map[b.id] = DB.rid(); });
     src.forEach(b => { const d = strip(b); d.parent = d.parent ? (map[d.parent] || '') : ''; d.at = Date.now(); ops.push({ path: `programs/${pid}/budgets`, id: map[b.id], data: d }); });
@@ -607,11 +612,11 @@ async function patchProg(fields){ const p = prog(); if (!p) return false; return
 
 function groupRow(g){ return `<div class="mem" data-gid="${esc(g.id)}"><div class="mem-top"><input class="in g-name" placeholder="${esc(t('groupName'))}" value="${esc(g.name || '')}" aria-label="${esc(t('groupName'))}"><button type="button" class="iconbtn" style="background:var(--bad-soft);color:var(--bad)" data-a="rowDel" aria-label="${esc(t('del'))}">${ic('trash')}</button></div>
   <div class="grid2"><div class="field"><label>${esc(t('fromAge'))}</label><input class="in g-min" inputmode="decimal" value="${g.min == null ? '' : esc(g.min)}" placeholder="${nf(0)}"></div><div class="field"><label>${esc(t('belowAge'))}</label><input class="in g-max" inputmode="decimal" value="${g.max == null ? '' : esc(g.max)}" placeholder="${esc(t('noLimit'))}"></div></div><div class="small muted g-lbl"></div></div>`; }
-function openAgeGroups(){
-  const p = prog(); const gs = (p.ageGroups || []).length ? p.ageGroups : [];
+function openAgeGroups(kind){
+  const p = prog(); const gift = kind === 'gift'; const gs = (gift ? p.giftGroups : p.ageGroups) || [];
   const upd = el => $$('[data-gid]', el).forEach(r => { $('.g-lbl', r).textContent = rangeLabel(parseNum($('.g-min', r).value), parseNum($('.g-max', r).value)); });
-  openSheet({ title: t('ageGroups'), body: () => `<p class="small muted" style="margin:0">${esc(t('ageHint'))}</p><div class="stack" id="rows">${gs.map(groupRow).join('')}</div><button type="button" class="btn ghost" data-a="groupAdd">${ic('plus')}${esc(t('addGroup'))}</button>`,
-    foot: () => `<button class="btn" data-a="groupsSave">${ic('check')}${esc(t('save'))}</button>`, mount: el => { upd(el); el.addEventListener('input', () => upd(el)); }, upd });
+  openSheet({ title: gift ? t('giftGroups') : t('ageGroups'), body: () => `<p class="small muted" style="margin:0">${esc(gift ? t('giftGroupsHint') : t('ageHint'))}</p><div class="stack" id="rows">${gs.map(groupRow).join('')}</div><button type="button" class="btn ghost" data-a="groupAdd">${ic('plus')}${esc(t('addGroup'))}</button>`,
+    foot: () => `<button class="btn" data-a="groupsSave" data-k="${gift ? 'gift' : ''}">${ic('check')}${esc(t('save'))}</button>`, mount: el => { upd(el); el.addEventListener('input', () => upd(el)); }, upd });
 }
 function rateRow(r, cats){
   return `<div class="mem" data-rid="${esc(r.id)}"><div class="mem-top"><input class="in r-name" placeholder="${esc(t('rateName'))}" value="${esc(r.name || '')}" aria-label="${esc(t('rateName'))}">
@@ -950,11 +955,11 @@ function refreshLive(){ sheets.forEach(o => { if (o.live) fillSheet(o); }); }
 /* ================= phase 3: gifts & Excel ================= */
 function persons(){ const out = []; S.fam.forEach(f => (f.members || []).forEach(m => out.push({ m, f }))); return out; }
 function giftMatches(g){
-  const p = prog() || {}; const G = (p.ageGroups || []).find(x => x.id === g.group);
+  const p = prog() || {}; const G = giftGroupsOf(p).find(x => x.id === g.group);
   return persons().filter(({ m, f }) => (!G || inRange(ageNum(m.age), G.min, G.max)) && (!g.gender || g.gender === 'any' || m.g === g.gender) && (!g.side || g.side === 'any' || f.side === g.side) && (!g.cat || (f.cat || '') === g.cat));
 }
 function giftInfo(g){ const rec = giftMatches(g); const need = (g.need != null && g.need !== '') ? Number(g.need) : rec.length; const bought = Number(g.bought) || 0; const given = rec.filter(r => (g.given || {})[r.m.id]).length; return { rec, need, bought, given, cost: need * (Number(g.price) || 0) }; }
-function giftWho(g){ const p = prog() || {}; const G = (p.ageGroups || []).find(x => x.id === g.group); return [G ? G.name : t('allAges'), g.gender === 'M' ? t('male') : g.gender === 'F' ? t('female') : '', g.side === 'in' ? t('inside') : g.side === 'out' ? t('outsideShort') : '', g.cat || ''].filter(Boolean).join(' · '); }
+function giftWho(g){ const p = prog() || {}; const G = giftGroupsOf(p).find(x => x.id === g.group); return [G ? G.name : t('allAges'), g.gender === 'M' ? t('male') : g.gender === 'F' ? t('female') : '', g.side === 'in' ? t('inside') : g.side === 'out' ? t('outsideShort') : '', g.cat || ''].filter(Boolean).join(' · '); }
 function giftStatus(i){ if (i.need > 0 && i.given >= i.need) return ['ok', t('g_allGiven')]; if (i.bought >= i.need) return ['info', t('g_allBought')]; return ['warn', t('g_toBuy', nf(i.need - i.bought))]; }
 function giftTotals(){ return S.gifts.reduce((a, g) => { const i = giftInfo(g); a.need += i.need; a.bought += i.bought; a.given += i.given; a.cost += i.cost; return a; }, { need:0, bought:0, given:0, cost:0 }); }
 function giftView(){
@@ -990,7 +995,7 @@ function openGiftForm(id){
   const upd = el => { const n = giftMatches(readGiftForm(el)).length; $('#gfMatch', el).textContent = t('matchN', nf(n)); };
   openSheet({ title: g ? t('editGift') : t('addGift'), body: () => `
     <div class="field"><label for="gfName">${esc(t('giftName'))}</label><input class="in" id="gfName" placeholder="${esc(t('giftNamePh'))}" value="${esc(g ? g.name : '')}"></div>
-    <div class="field"><label for="gfGroup">${esc(t('forWhom'))}</label><select class="in" id="gfGroup"><option value="">${esc(t('allAges'))}</option>${(p.ageGroups || []).map(x => `<option value="${x.id}" ${g && g.group === x.id ? 'selected' : ''}>${esc(x.name)} (${esc(rangeLabel(x.min, x.max))})</option>`).join('')}</select></div>
+    <div class="field"><label for="gfGroup">${esc(t('forWhom'))}</label><select class="in" id="gfGroup"><option value="">${esc(t('allAges'))}</option>${giftGroupsOf(p).map(x => `<option value="${x.id}" ${g && g.group === x.id ? 'selected' : ''}>${esc(x.name)} (${esc(rangeLabel(x.min, x.max))})</option>`).join('')}</select></div>
     <div class="seg"><button type="button" class="${gen === 'any' ? 'on' : ''}" data-a="segPick" data-g="gen" data-v="any">${esc(t('anyGender'))}</button><button type="button" class="${gen === 'M' ? 'on' : ''}" data-a="segPick" data-g="gen" data-v="M">${esc(t('male'))}</button><button type="button" class="${gen === 'F' ? 'on' : ''}" data-a="segPick" data-g="gen" data-v="F">${esc(t('female'))}</button></div>
     <div class="grid2"><select class="in" id="gfSide" aria-label="${esc(t('side'))}"><option value="any">${esc(t('anySide'))}</option><option value="in" ${g && g.side === 'in' ? 'selected' : ''}>${esc(t('inside'))}</option><option value="out" ${g && g.side === 'out' ? 'selected' : ''}>${esc(t('outside'))}</option></select>
     ${(p.categories || []).length ? `<select class="in" id="gfCat" aria-label="${esc(t('category'))}"><option value="">${esc(t('anyCat'))}</option>${p.categories.map(c => `<option ${g && g.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>` : ''}</div>
@@ -1043,6 +1048,10 @@ function buildWorkbook(){
   add(t('t_people'), [['#', t('name'), t('relation'), t('famHead'), t('side'), t('category'), t('gender'), t('age'), t('group'), t('rate'), t('phone')]].concat(
     persons().map(({ m: mm, f }, i) => { const r = rateFor(mm, f, p); return [i + 1, mm.name || '', relLabel(mm.rel), famName(f), f.side === 'out' ? t('outsideShort') : t('inside'), f.cat || '', mm.g === 'M' ? t('male') : mm.g === 'F' ? t('female') : '', ageNum(mm.age), gr.filter(G => inRange(ageNum(mm.age), G.min, G.max)).map(G => G.name).join(', '), r ? r.name : t('noRate'), f.phone || '']; })));
   add(t('ageGroups'), [[t('group'), t('ageRangeH'), t('total'), t('male'), t('female'), t('inside'), t('outsideShort')]].concat(s.groups.map(G => [G.g.name, rangeLabel(G.g.min, G.g.max), G.total, G.m, G.f, G.inn, G.out])).concat(s.unknown ? [[t('unknownAge'), '', s.unknown]] : []));
+  { const G = busGroups(), rows = [[t('bus'), t('famHead'), t('people'), t('category'), t('side')]];
+    const put = (label, fams) => fams.forEach(f => rows.push([label, famName(f), famSize(f), f.cat || '', f.side === 'out' ? t('outsideShort') : t('inside')]));
+    G.bs.forEach(b => put(b.name, G.by[b.id])); put(t('ownCar'), G.own); put(t('unassigned'), G.none);
+    if (G.bs.length || G.own.length) add(t('buses'), rows); }
   add(t('t_chanda'), [[t('famHead'), t('category'), t('side'), t('people'), t('due'), t('collected'), t('remaining'), t('status')]].concat(S.fam.map(f => { const d = famDue(f, p), pd = famPaid(f.id); return [famName(f), f.cat || '', f.side === 'out' ? t('outsideShort') : t('inside'), (f.members || []).length, d, pd, Math.max(0, d - pd), t('st_' + famStatus(d, pd))]; })));
   add(t('payments'), [[t('date'), t('famHead'), t('amount'), t('method'), t('receivedBy'), t('note')]].concat(S.pay.map(x => { const f = S.fam.find(y => y.id === x.fid); return [x.date || '', f ? famName(f) : '', Number(x.amount) || 0, meth(x.method), x.recv || '', x.note || '']; })));
   add(t('sponsors'), [[t('company'), t('spKind'), t('amount'), t('items'), t('estValue'), t('status'), t('receivedBy'), t('date'), t('contact'), t('note')]].concat(S.sp.map(x => [x.company || '', x.kind === 'kind' ? t('k_kind') : t('k_cash'), x.kind === 'kind' ? 0 : Number(x.amount) || 0, x.items || '', Number(x.value) || 0, t('s_' + (x.status || 'promised')), x.recv || '', x.date || '', x.contact || '', x.note || ''])));
@@ -1079,6 +1088,165 @@ function openExport(){
 }
 
 /* ================= events ================= */
+/* ================= phase 4: cloud status, backup, gift age groups, buses ================= */
+/* ---------- cloud status strip ---------- */
+S.sync = { pending: 0 };
+function syncStrip(){
+  if (DB.mode !== 'firebase') return '';
+  const off = navigator.onLine === false, n = S.sync.pending;
+  const [cls, txt] = off ? ['warn', t('syncOff')] : n > 0 ? ['warn', t('syncPending', nf(n))] : ['ok', t('syncOk')];
+  return `<div class="demo-flag sync ${cls}" role="status"><span>${esc(txt)}</span></div>`;
+}
+window.addEventListener('pm-sync', e => {
+  S.sync.pending = (e.detail && e.detail.pending) || 0;
+  if (e.detail && e.detail.error) toast(t('writeFail') + ' ' + e.detail.error);
+  renderBandOnly();
+});
+window.addEventListener('online', renderBandOnly); window.addEventListener('offline', renderBandOnly);
+
+/* ---------- copy kept on this device ---------- */
+const SUBS = ['families','payments','notes','budgets','expenses','sponsors','settlements','gifts'];
+const LC_KEY = 'pm-autobackup';
+function lcRead(){ try { return JSON.parse(localStorage.getItem(LC_KEY) || '{}'); } catch(e) { return {}; } }
+let lcTimer = 0;
+function lcSchedule(){ clearTimeout(lcTimer); lcTimer = setTimeout(lcSave, 2500); }
+function lcSave(){
+  const p = prog(); if (!p || DB.mode !== 'firebase') return;
+  const sub = { families:S.fam, payments:S.pay, notes:S.notes, budgets:S.bud, expenses:S.exp, sponsors:S.sp, settlements:S.st, gifts:S.gifts };
+  const count = SUBS.reduce((n, k) => n + sub[k].length, 0); if (!count) return;
+  const entry = { at: Date.now(), count, id: p.id, doc: strip(p), sub: JSON.parse(JSON.stringify(sub)) };
+  const all = lcRead(); const cur = all[p.id] || {};
+  cur.latest = entry; if (!cur.best || count >= cur.best.count) cur.best = entry;
+  all[p.id] = cur;
+  try { localStorage.setItem(LC_KEY, JSON.stringify(all)); } catch(e) {}
+}
+
+/* ---------- backup file ---------- */
+async function collectBackup(){
+  const progs = await DB.getAll('programs'); const out = [];
+  for (const p of progs) { const sub = {}; for (const c of SUBS) sub[c] = await DB.getAll(`programs/${p.id}/${c}`); out.push({ id: p.id, doc: strip(p), sub }); }
+  return { app:'program-manager', version:1, at: new Date().toISOString(), programs: out };
+}
+async function deliverFile(blob, name){
+  const file = new File([blob], name, { type: blob.type });
+  if (navigator.canShare && navigator.canShare({ files:[file] })) { try { await navigator.share({ files:[file], title: name }); return true; } catch(e) { if (e && e.name === 'AbortError') return false; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); return true;
+}
+async function backupDownload(){
+  toast(t('preparing'));
+  try {
+    const data = await collectBackup();
+    const ok = await deliverFile(new Blob([JSON.stringify(data)], { type:'application/json' }), `program-manager-backup ${today()}.json`);
+    if (ok) { try { localStorage.setItem('pm-lastbackup', String(Date.now())); } catch(e) {} toast(t('bkSaved')); }
+  } catch(e) { console.error(e); toast(t('bkFail')); }
+}
+function backupCounts(data){ let n = 0; (data.programs || []).forEach(p => SUBS.forEach(c => { n += ((p.sub || {})[c] || []).length; })); return n; }
+function askRestore(data){
+  if (!data || !Array.isArray(data.programs) || !data.programs.length) { toast(t('bkBad')); return; }
+  confirmBox(t('bkConfirm', nf(data.programs.length), nf(backupCounts(data))), () => restoreBackup(data), t('bkRestoreYes'));
+}
+async function restoreBackup(data){
+  toast(t('bkRestoring'));
+  try {
+    for (const p of data.programs) {
+      await DB.set('programs', p.id, p.doc);
+      for (const c of SUBS) for (const d of ((p.sub || {})[c] || [])) { const id = d.id; await DB.set(`programs/${p.id}/${c}`, id, strip(d)); }
+    }
+    toast(t('bkDone'));
+  } catch(e) { console.error(e); toast(t('bkFail')); }
+}
+function openBackup(){
+  openSheet({ title: t('backup'), body: () => {
+    const lc = lcRead(), mine = lc[S.pid] && lc[S.pid].best, last = Number((function(){ try { return localStorage.getItem('pm-lastbackup'); } catch(e) { return 0; } })()) || 0;
+    return `<p style="margin:0">${esc(t('backupHint'))}</p>
+    <div class="small muted">${esc(last ? t('bkLast', new Date(last).toLocaleString(P.lang === 'bn' ? 'bn-BD' : 'en-GB')) : t('bkNever'))}</div>
+    <button class="btn" data-a="bkDown">${ic('download')}${esc(t('bkDownload'))}</button>
+    ${isAdmin() ? `<button class="btn ghost" data-a="bkPick">${ic('upload')}${esc(t('bkRestore'))}</button><input type="file" id="bkFile" accept=".json,application/json" hidden>
+    ${mine ? `<div class="note-box small">${esc(t('bkDevice', nf(mine.count), new Date(mine.at).toLocaleString(P.lang === 'bn' ? 'bn-BD' : 'en-GB')))}</div><button class="btn ghost" data-a="bkLocal">${ic('history')}${esc(t('bkRestoreDevice'))}</button>` : ''}` : ''}`; } });
+}
+document.addEventListener('change', e => {
+  if (e.target.id !== 'bkFile') return; const f = e.target.files && e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { try { askRestore(JSON.parse(String(r.result))); } catch(err) { toast(t('bkBad')); } };
+  r.readAsText(f); e.target.value = '';
+});
+
+/* ---------- gift age groups (separate from the chanda / headcount groups) ---------- */
+const giftGroupsOf = p => ((p && p.giftGroups) || []).length ? p.giftGroups : ((p && p.ageGroups) || []);
+
+/* ---------- buses ---------- */
+const famSize = f => (f.members || []).length;
+const busList = () => (prog() || {}).buses || [];
+function busOf(f){ const bs = busList(); if (f.bus === 'own') return 'own'; return bs.some(b => b.id === f.bus) ? f.bus : ''; }
+function busGroups(){
+  const bs = busList(), own = [], none = [], by = {}; bs.forEach(b => { by[b.id] = []; });
+  S.fam.forEach(f => { const k = busOf(f); if (k === 'own') own.push(f); else if (k) by[k].push(f); else none.push(f); });
+  return { bs, by, own, none };
+}
+const sumPeople = fs => fs.reduce((n, f) => n + famSize(f), 0);
+function busFamItem(f, i){
+  return `<div class="item tap" data-a="busAssign" data-id="${f.id}" role="button" tabindex="0">${avatar(famName(f), i)}<div class="body"><div class="title">${esc(famName(f))}</div><div class="small muted">${[f.cat, t('peopleN', nf(famSize(f)))].filter(Boolean).map(esc).join(' · ')}</div></div></div>`;
+}
+function busView(){
+  const G = busGroups(), canSet = can('members');
+  if (!G.bs.length) return `<div class="sec-h"><h2>${esc(t('buses'))}</h2></div>` + emptyBox('bus', t('noBuses'), isAdmin() ? `<button class="btn" data-a="busSetup">${ic('plus')}${esc(t('busSetup'))}</button>` : '');
+  const card = (title, fams, cap, cls) => `<section class="card" style="padding-block:6px"><div class="row" style="justify-content:space-between;margin:4px 0"><h3 style="margin:0">${esc(title)}</h3><span class="pill ${cls || 'info'}">${esc(t('peopleN', nf(sumPeople(fams))))}${cap ? ` / ${nf(cap)}` : ''}</span></div>
+    ${cap ? `<div class="bar thin"><i class="${sumPeople(fams) > cap ? 'bad' : sumPeople(fams) >= cap * 0.9 ? 'warn' : 'ok'}" style="width:${Math.min(100, Math.round(sumPeople(fams) * 100 / cap))}%"></i></div>` : ''}
+    ${fams.length ? `<div class="list">${fams.map(busFamItem).join('')}</div>` : `<p class="muted small" style="margin:6px 0">${esc(t('busEmpty'))}</p>`}</section>`;
+  return `<div class="sec-h"><h2>${esc(t('buses'))}</h2><span class="small muted">${esc(t('famN', nf(S.fam.length)))}</span></div>
+  <div class="row" style="flex-wrap:wrap">
+    ${canSet ? `<button class="btn" data-a="busDraw">${ic('shuffle')}${esc(t('busDraw'))}</button>` : ''}
+    <button class="btn ghost" data-a="busShare">${ic('share')}${esc(t('share'))}</button>
+    ${isAdmin() ? `<button class="btn ghost" data-a="busSetup">${ic('edit')}${esc(t('busSetup'))}</button>` : ''}
+    ${canSet && S.fam.some(f => busOf(f)) ? `<button class="btn ghost" data-a="busClear">${ic('trash')}${esc(t('busClear'))}</button>` : ''}</div>
+  ${!canSet ? `<div class="note-box small">${esc(t('readOnly'))}</div>` : ''}
+  ${G.none.length ? card(t('unassigned'), G.none, 0, 'warn') : ''}
+  ${G.bs.map(b => card(b.name, G.by[b.id], Number(b.cap) || 0)).join('')}
+  ${card(t('ownCar'), G.own, 0)}`;
+}
+function openBusAssign(id){
+  const f = S.fam.find(x => x.id === id); if (!f) return; const G = busGroups(), cur = busOf(f);
+  const opt = (v, label, sub) => `<button class="btn ${cur === v ? '' : 'ghost'} block" style="justify-content:space-between" data-a="busSet" data-id="${f.id}" data-v="${esc(v)}"><span>${esc(label)}</span><span class="small">${esc(sub || '')}</span></button>`;
+  openSheet({ title: famName(f), body: () => `<p class="small muted" style="margin:0">${esc(t('peopleN', nf(famSize(f))))}</p><div class="stack">
+    ${G.bs.map(b => opt(b.id, b.name, `${nf(sumPeople(G.by[b.id]))}${Number(b.cap) ? ' / ' + nf(b.cap) : ''}`)).join('')}${opt('own', t('ownCar'), nf(sumPeople(G.own)))}${opt('', t('unassigned'), '')}</div>` });
+}
+async function setBus(id, v){
+  const f = S.fam.find(x => x.id === id); if (!f || !can('members')) return;
+  const d = Object.assign(strip(f), { bus: v, updatedAt: Date.now() });
+  if (await commit('editFamily', [{ path: famPath(), id, data: d }], null, true)) { closeSheet(); renderBandOnly(); render(); }
+}
+function randInt(n){ if (window.crypto && crypto.getRandomValues) { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; } return Math.floor(Math.random() * n); }
+function drawBuses(){
+  const G = busGroups(); if (!G.bs.length || !G.none.length) { toast(t('busNothing')); return; }
+  const load = {}; G.bs.forEach(b => { load[b.id] = sumPeople(G.by[b.id]); });
+  const pool = G.none.slice(); for (let i = pool.length - 1; i > 0; i--) { const j = randInt(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const ops = []; let skipped = 0;
+  pool.forEach(f => {
+    const s = famSize(f), fit = G.bs.filter(b => !Number(b.cap) || load[b.id] + s <= Number(b.cap)); if (!fit.length) { skipped++; return; }
+    const min = Math.min(...fit.map(b => load[b.id])), low = fit.filter(b => load[b.id] === min), b = low[randInt(low.length)];
+    load[b.id] += s; ops.push({ path: famPath(), id: f.id, data: Object.assign(strip(f), { bus: b.id, updatedAt: Date.now() }) });
+  });
+  if (!ops.length) { toast(t('busNoSeat')); return; }
+  commit('editFamily', ops, skipped ? t('busDrawSkip', nf(ops.length), nf(skipped)) : t('busDrawDone', nf(ops.length)));
+}
+function busText(){
+  const p = prog(), G = busGroups(), L = [`*${p.name}* — ${t('buses')}`, ''];
+  const blk = (title, fams, cap) => { L.push(`*${title}* (${t('peopleN', nf(sumPeople(fams)))}${cap ? ' / ' + nf(cap) : ''})`); if (!fams.length) L.push('—'); fams.forEach((f, i) => L.push(`${nf(i + 1)}. ${famName(f)} (${nf(famSize(f))})`)); L.push(''); };
+  G.bs.forEach(b => blk(b.name, G.by[b.id], Number(b.cap) || 0)); blk(t('ownCar'), G.own, 0); if (G.none.length) blk(t('unassigned'), G.none, 0);
+  return L.join('\n').trim();
+}
+function busRow(b){
+  return `<div class="mem" data-bid="${esc(b.id)}"><div class="mem-top"><input class="in b-name" placeholder="${esc(t('busName'))}" value="${esc(b.name || '')}" aria-label="${esc(t('busName'))}">
+    <button type="button" class="iconbtn" style="background:var(--bad-soft);color:var(--bad)" data-a="rowDel" aria-label="${esc(t('del'))}">${ic('trash')}</button></div>
+    <div class="field"><label>${esc(t('busCap'))}</label><input class="in b-cap" inputmode="numeric" value="${b.cap == null || b.cap === '' ? '' : esc(b.cap)}" placeholder="${esc(t('noLimit'))}"></div></div>`;
+}
+function openBusSetup(){
+  const bs = busList();
+  openSheet({ title: t('busSetup'), body: () => `<p class="small muted" style="margin:0">${esc(t('busHint'))}</p><div class="stack" id="rows">${bs.map(busRow).join('')}</div><button type="button" class="btn ghost" data-a="busAdd">${ic('plus')}${esc(t('addBus'))}</button>`,
+    foot: () => `<button class="btn" data-a="busSave">${ic('check')}${esc(t('save'))}</button>` });
+}
+
 const A = {
   tab: el => { S.view = el.dataset.v; if (el.dataset.inc) S.incMode = el.dataset.inc; if (el.dataset.spend) S.spendMode = el.dataset.spend; S.q = ''; S.cq = ''; S.eq = ''; render(); window.scrollTo(0, 0); },
   demoIn: el => DB.demoSignIn(el.dataset.r),
@@ -1101,12 +1269,13 @@ const A = {
       await commit('delProgram', ops, t('deleted')); }); },
   segPick: el => { $$('[data-a="segPick"]', el.parentNode).forEach(b => b.classList.toggle('on', b === el)); const sh = el.closest('.sheet'); if (sh && el.dataset.g) $$('[data-when]', sh).forEach(n => { const [g, v] = n.dataset.when.split(':'); if (g === el.dataset.g) n.hidden = v !== el.dataset.v; }); },
   ageGroups: () => openAgeGroups(),
+  giftGroups: () => openAgeGroups('gift'),
   groupAdd: el => { const sh = el.closest('.sheet'); $('#rows', sh).insertAdjacentHTML('beforeend', groupRow({ id: DB.rid(), name:'', min:null, max:null })); $$('#rows .g-name', sh).pop().focus(); },
   rowDel: el => el.closest('.mem').remove(),
   rowUp: el => { const r = el.closest('.mem'); r.previousElementSibling && r.parentNode.insertBefore(r, r.previousElementSibling); },
   rowDown: el => { const r = el.closest('.mem'); r.nextElementSibling && r.parentNode.insertBefore(r.nextElementSibling, r); },
   groupsSave: async el => { const sh = el.closest('.sheet'); const gs = $$('[data-gid]', sh).map(r => ({ id: r.dataset.gid, name: $('.g-name', r).value.trim(), min: parseNum($('.g-min', r).value), max: parseNum($('.g-max', r).value) })).filter(g => g.name);
-    if (await patchProg({ ageGroups: gs })) closeSheet(); },
+    if (await patchProg(el.dataset.k === 'gift' ? { giftGroups: gs } : { ageGroups: gs })) closeSheet(); },
   rates: () => openRates(),
   rateAdd: el => { const sh = el.closest('.sheet'); $('#rows', sh).insertAdjacentHTML('beforeend', rateRow({ id: DB.rid(), name:'', amount:null, side:'any', cat:'', min:null, max:null }, prog().categories || [])); $$('#rows .r-name', sh).pop().focus(); },
   ratesSave: async el => { const sh = el.closest('.sheet'); const rs = $$('[data-rid]', sh).map(r => ({ id: r.dataset.rid, name: $('.r-name', r).value.trim(), amount: parseNum($('.r-amt', r).value) || 0, side: $('.r-side', r).value, cat: $('.r-cat', r).value, min: parseNum($('.r-min', r).value), max: parseNum($('.r-max', r).value) })).filter(r => r.name);
@@ -1188,6 +1357,18 @@ const A = {
   giveToggle: el => { const g = S.gifts.find(x => x.id === el.dataset.g); if (!g) return; const given = Object.assign({}, g.given || {}); if (given[el.dataset.m]) delete given[el.dataset.m]; else given[el.dataset.m] = true; el.classList.toggle('on'); commit('giveGift', [{ path: giftPath(), id: g.id, data: Object.assign(strip(g), { given }) }], '', true); },
   shareGift: el => { const g = S.gifts.find(x => x.id === el.dataset.id); if (g) openShare(giftText(g), g.name); },
   exportOpen: () => openExport(),
+  backupOpen: () => openBackup(),
+  bkDown: () => backupDownload(),
+  bkPick: () => { const i = $('#bkFile'); i && i.click(); },
+  bkLocal: () => { const m = (lcRead()[S.pid] || {}).best; if (m) askRestore({ programs: [{ id: m.id, doc: m.doc, sub: m.sub }] }); },
+  busAssign: el => { if (can('members')) openBusAssign(el.dataset.id); },
+  busSet: el => setBus(el.dataset.id, el.dataset.v),
+  busDraw: () => { const n = busGroups().none.length; if (!n) { toast(t('busNothing')); return; } confirmBox(t('busDrawAsk', nf(n)), () => drawBuses(), t('busDraw')); },
+  busClear: () => confirmBox(t('busClearAsk'), () => commit('editFamily', S.fam.filter(f => f.bus).map(f => ({ path: famPath(), id: f.id, data: Object.assign(strip(f), { bus: '', updatedAt: Date.now() }) })), t('saved')), t('busClear')),
+  busShare: () => openShare(busText(), t('buses')),
+  busSetup: () => openBusSetup(),
+  busAdd: el => { const sh = el.closest('.sheet'); const n = $$('[data-bid]', sh).length + 1; $('#rows', sh).insertAdjacentHTML('beforeend', busRow({ id: DB.rid(), name: t('busN', nf(n)), cap: null })); },
+  busSave: async el => { const sh = el.closest('.sheet'); const bs = $$('[data-bid]', sh).map(r => ({ id: r.dataset.bid, name: $('.b-name', r).value.trim(), cap: parseNum($('.b-cap', r).value) || null })).filter(b => b.name); if (await patchProg({ buses: bs })) closeSheet(); },
   xlsxDown: () => exportExcel(false),
   xlsxShare: () => exportExcel(true),
   demoReset: () => confirmBox(t('resetDemoSure'), () => { DB.resetDemo(false, P.lang); S.undo = []; toast(t('saved')); }, t('resetDemo')),
@@ -1295,5 +1476,5 @@ window.PM_SEED = function(mem, rid, empty, lang){
 /* ================= start ================= */
 applyPrefs(); render();
 if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.PM_NO_SW) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
-window.PM_TEST = { evalExpr, autoRate, rateFor, famDue, inRange, parseNum, stats, S, buildWorkbook, giftInfo, ledger };
+window.PM_TEST = { busGroups, drawBuses, busText, collectBackup, restoreBackup, giftGroupsOf, lcSave, evalExpr, autoRate, rateFor, famDue, inRange, parseNum, stats, S, buildWorkbook, giftInfo, ledger };
 })();

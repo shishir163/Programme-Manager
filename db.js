@@ -58,9 +58,20 @@ window.PMDB = (function(){
     app = firebase.initializeApp(cfg);
     auth = firebase.auth();
     fs = firebase.firestore();
+    // Mobile networks sometimes block the default Firestore channel; this lets it fall back to long-polling.
+    try { fs.settings({ experimentalAutoDetectLongPolling: true, ignoreUndefinedProperties: true, merge: true }); } catch(e) {}
     auth.getRedirectResult().catch(e => window.dispatchEvent(new CustomEvent('pm-auth-error', { detail: e })));
     try { await fs.enablePersistence({ synchronizeTabs: true }); } catch(e) {}
   })();
+  // Writes are tracked so the app can show whether everything has reached the cloud.
+  let pending = 0;
+  const syncEv = err => window.dispatchEvent(new CustomEvent('pm-sync', { detail: { pending, error: err ? (err.code || 'error') : '' } }));
+  function track(p){
+    pending++; syncEv();
+    p.then(() => { pending--; syncEv(); }, e => { pending--; syncEv(e); });
+    // If the server has not confirmed within a few seconds, let the screen carry on; the status strip keeps showing "sending".
+    return Promise.race([p, new Promise(res => setTimeout(res, 6000))]);
+  }
   const clean = d => JSON.parse(JSON.stringify(d, (k, v) => v === undefined ? null : v));
   return {
     mode: 'firebase',
@@ -94,8 +105,8 @@ window.PMDB = (function(){
       return () => { dead = true; unsub && unsub(); };
     },
     async getAll(path){ await ready; const q = await fs.collection(path).get(); return q.docs.map(d => Object.assign({ id: d.id }, d.data())); },
-    async set(path, id, data){ await ready; await fs.collection(path).doc(id).set(clean(data)); },
-    async remove(path, id){ await ready; await fs.collection(path).doc(id).delete(); },
+    async set(path, id, data){ await ready; return track(fs.collection(path).doc(id).set(clean(data))); },
+    async remove(path, id){ await ready; return track(fs.collection(path).doc(id).delete()); },
     rid
   };
 })();

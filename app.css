@@ -225,3 +225,7 @@ textarea.in{min-height:90px;resize:vertical}
 .give{width:42px;height:42px;flex:none;border-radius:12px;border:2px solid var(--line);background:var(--surface);color:transparent;display:grid;place-items:center;cursor:pointer}
 .give svg{width:22px;height:22px}
 .give.on{background:var(--ok);border-color:var(--ok);color:#fff}
+
+.demo-flag.sync{justify-content:center;font-weight:700}
+.demo-flag.sync.ok{background:rgba(46,160,90,.30)}
+.demo-flag.sync.warn{background:rgba(255,170,0,.45);color:#2b1d00}
