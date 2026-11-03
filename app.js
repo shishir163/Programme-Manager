@@ -63,7 +63,7 @@ const I = {
   wallet:'<rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 10.5h18"/><path d="M15.5 15h2.5"/><path d="M6 6V5a2 2 0 0 1 2-2h9"/>',
   note:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h7M9 17h5"/>',
   more:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
-  expand:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', shrink:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
+  shirt:'<path d="M8 3 3 6l2 4 3-1v12h8V9l3 1 2-4-5-3a4 4 0 0 1-8 0z"/>', expand:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', shrink:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
   plus:'<path d="M12 5v14M5 12h14"/>', x:'<path d="M6 6l12 12M18 6 6 18"/>',
   search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   calc:'<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8 7h8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/>',
@@ -266,7 +266,7 @@ function render(){
   if (!S.loaded.users) { app.innerHTML = `<div class="empty" style="padding-top:30vh">${esc(t('loading'))}</div>`; return; }
   if (!S.profile || S.profile.active === false) { app.innerHTML = noAccessView(); return; }
   const v = S.view;
-  const body = !prog() && v !== 'more' ? noProgramView() : ({home:homeView, people:peopleView, income:incomeView, spend:spendView, notes:notesView, settle:settleView, bus:busView, more:moreView}[v] || homeView)();
+  const body = !prog() && v !== 'more' ? noProgramView() : ({home:homeView, people:peopleView, income:incomeView, spend:spendView, notes:notesView, settle:settleView, bus:busView, tshirt:tshirtView, more:moreView}[v] || homeView)();
   app.innerHTML = `${bandView()}<main class="wrap" id="main">${body}</main>${fabView()}${tabsView()}`;
   lcSchedule();
 }
@@ -282,7 +282,7 @@ function bandView(){
 }
 function tabsView(){
   const tabs = [['home','home'],['people','users'],['income','wallet'],['spend','receipt'],['more','more']];
-  const cur = ['notes','settle','bus'].includes(S.view) ? 'more' : S.view;
+  const cur = ['notes','settle','bus','tshirt'].includes(S.view) ? 'more' : S.view;
   return `<nav class="tabs" aria-label="menu"><div class="tabs-in">${tabs.map(([k, i]) => `<button class="tab ${cur === k ? 'on' : ''}" data-a="tab" data-v="${k}" ${cur === k ? 'aria-current="page"' : ''}>${ic(i)}<span>${esc(t('t_' + k))}</span></button>`).join('')}</div></nav>`;
 }
 function fabView(){
@@ -377,7 +377,7 @@ function peopleList(){
 /* ---------- family form ---------- */
 function memberRow(m, p, idx){
   const rates = p.rates || [];
-  return `<div class="mem" data-mid="${esc(m.id)}">
+  return `<div class="mem" data-mid="${esc(m.id)}" data-ts="${esc(m.ts || '')}">
     <div class="mem-top"><input class="in m-name" placeholder="${esc(t('name'))}" value="${esc(m.name || '')}" aria-label="${esc(t('name'))}">
       ${idx ? `<button type="button" class="iconbtn" style="background:var(--bad-soft);color:var(--bad)" data-a="memDel" aria-label="${esc(t('del'))}">${ic('trash')}</button>` : ''}</div>
     <div class="mem-grid">
@@ -385,11 +385,12 @@ function memberRow(m, p, idx){
       <select class="in m-g" aria-label="${esc(t('gender'))}"><option value="">${esc(t('gender'))}</option><option value="M" ${m.g === 'M' ? 'selected' : ''}>${esc(t('male'))}</option><option value="F" ${m.g === 'F' ? 'selected' : ''}>${esc(t('female'))}</option></select>
       <input class="in m-age" inputmode="decimal" placeholder="${esc(t('age'))}" value="${ageNum(m.age) == null ? '' : esc(m.age)}" aria-label="${esc(t('age'))}">
       <select class="in m-rate span2" style="grid-column:1/-1" aria-label="${esc(t('rate'))}"><option value="">${esc(t('autoRate'))}</option>${rates.map(r => `<option value="${esc(r.id)}" ${m.rate === r.id ? 'selected' : ''}>${esc(r.name)} · ${tk(r.amount)}</option>`).join('')}<option value="none" ${m.rate === 'none' ? 'selected' : ''}>${esc(t('noRate'))}</option></select>
+    ${tsOf(p).sizes.length ? `<div class="mem-grid" style="margin-top:8px"><select class="in m-ts" style="grid-column:1/-1" aria-label="${esc(t('tsSizeLbl'))}"><option value="">${esc(t('tsSizeLbl'))}: ${esc(t('tsUnsetOpt'))}</option><option value="-" ${m.ts === '-' ? 'selected' : ''}>${esc(t('tsSizeLbl'))}: ${esc(t('tsNoNeed'))}</option>${tsOf(p).sizes.map(z => `<option value="${esc(z)}" ${m.ts === z ? 'selected' : ''}>${esc(t('tsSizeLbl'))}: ${esc(z)}</option>`).join('')}</select></div>` : ''}
     </div></div>`;
 }
 function readFamForm(root){
   const side = $('[data-a="fside"].on', root) ? $('[data-a="fside"].on', root).dataset.s : 'in';
-  const members = $$('.mem', root).map(el => ({ id: el.dataset.mid, name: $('.m-name', el).value.trim(), rel: $('.m-rel', el).value.trim(), g: $('.m-g', el).value, age: parseNum($('.m-age', el).value), rate: $('.m-rate', el).value }));
+  const members = $$('.mem', root).map(el => ({ id: el.dataset.mid, name: $('.m-name', el).value.trim(), rel: $('.m-rel', el).value.trim(), g: $('.m-g', el).value, age: parseNum($('.m-age', el).value), rate: $('.m-rate', el).value, ts: $('.m-ts', el) ? $('.m-ts', el).value : (el.dataset.ts || '') }));
   return { side, dept: side === 'out' ? '' : ($('#fDept', root) ? $('#fDept', root).value : ''), cat: $('#fCat', root) ? $('#fCat', root).value : '', phone: $('#fPhone', root).value.trim(), due: parseNum($('#fDue', root).value), note: $('#fNote', root).value.trim(), members };
 }
 function updateAutoLabels(root){
@@ -540,6 +541,7 @@ function moreView(){
     ${p ? item('tab', 'pie', t('budget'), tk(budTotals().total), 'data-v="spend" data-spend="bud"') : ''}
     ${p ? item('tab', 'gift', t('gifts'), nf(S.gifts.length), 'data-v="spend" data-spend="gift"') : ''}
     ${p ? item('tab', 'bus', t('buses'), t('famN', nf(S.fam.filter(f => busOf(f)).length)) + ' / ' + nf(S.fam.length), 'data-v="bus"') : ''}
+    ${p ? item('tab', 'shirt', t('tshirt'), tsStats().total ? t('tsTotalN', nf(tsStats().total)) : '', 'data-v="tshirt"') : ''}
     ${p ? item('exportOpen', 'download', t('excel'), '') : ''}
     ${item('backupOpen', 'history', t('backup'), '')}
     ${item('appearance', 'palette', t('appearance'), `${(THEMES.find(x => x.id === themeId()) || {})[P.lang] || ''} · ${(FONTS_BN.find(f => f.id === P.fontBn) || {}).name || ''}`)}
@@ -576,7 +578,7 @@ async function saveProg(id, root){
   let doc = Object.assign({}, prev ? strip(prev) : { ageGroups:[], rates:[], categories: P.lang === 'bn' ? ['কনসালটেন্ট','ডাক্তার','সিস্টার','স্টাফ','অতিথি'] : ['Consultant','Doctor','Sister','Staff','Guest'], createdAt: Date.now(), createdBy: myName() },
     { name, type, date: $('#gDate', root).value, venue: $('#gVenue', root).value.trim(), note: $('#gNote', root).value.trim(), updatedAt: Date.now() });
   const copy = $('#gCopy', root) && $('#gCopy', root).value;
-  if (copy) { const src = S.programs.find(x => x.id === copy); if (src) { doc.ageGroups = JSON.parse(JSON.stringify(src.ageGroups || [])); doc.giftGroups = JSON.parse(JSON.stringify(src.giftGroups || [])); doc.buses = JSON.parse(JSON.stringify(src.buses || [])); if (Array.isArray(src.depts)) doc.depts = src.depts.slice(); if (src.seatAge != null) doc.seatAge = src.seatAge; if (Array.isArray(src.dash)) doc.dash = JSON.parse(JSON.stringify(src.dash)); doc.rates = JSON.parse(JSON.stringify(src.rates || [])); doc.categories = (src.categories || []).slice(); } }
+  if (copy) { const src = S.programs.find(x => x.id === copy); if (src) { doc.ageGroups = JSON.parse(JSON.stringify(src.ageGroups || [])); doc.giftGroups = JSON.parse(JSON.stringify(src.giftGroups || [])); doc.buses = JSON.parse(JSON.stringify(src.buses || [])); if (Array.isArray(src.depts)) doc.depts = src.depts.slice(); if (src.seatAge != null) doc.seatAge = src.seatAge; if (src.tshirt) doc.tshirt = Object.assign(JSON.parse(JSON.stringify(src.tshirt)), { extra: {}, bud: '' }); if (Array.isArray(src.dash)) doc.dash = JSON.parse(JSON.stringify(src.dash)); doc.rates = JSON.parse(JSON.stringify(src.rates || [])); doc.categories = (src.categories || []).slice(); } }
   const pid = id || DB.rid(); const ops = [{ path:'programs', id: pid, data: doc }];
   if (copy) { try { const src = await DB.getAll(`programs/${copy}/budgets`); const map = {}; src.forEach(b => { map[b.id] = DB.rid(); });
     src.forEach(b => { const d = strip(b); d.parent = d.parent ? (map[d.parent] || '') : ''; d.at = Date.now(); ops.push({ path: `programs/${pid}/budgets`, id: map[b.id], data: d }); });
@@ -1020,8 +1022,11 @@ function buildWorkbook(){
     [t('due'), s.due], [t('collected'), s.paid], [t('remaining'), Math.max(0, s.due - s.paid)], [t('spCashRecv'), m.spRecv], [t('spPromised'), m.spProm], [],
     [t('income'), m.income], [t('spent'), m.spent], [t('budTotal'), bt.total], [m.bal >= 0 ? t('inHand') : t('deficit'), Math.abs(m.bal)]].concat(p.note ? [[], [t('progNote'), p.note]] : []));
   const gr = p.ageGroups || [];
-  add(t('t_people'), [['#', t('name'), t('relation'), t('famHead'), t('side'), t('category'), t('dept'), t('gender'), t('age'), t('group'), t('rate'), t('phone')]].concat(
-    persons().map(({ m: mm, f }, i) => { const r = rateFor(mm, f, p); return [i + 1, mm.name || '', relLabel(mm.rel), famName(f), f.side === 'out' ? t('outsideShort') : t('inside'), f.cat || '', deptName(f), mm.g === 'M' ? t('male') : mm.g === 'F' ? t('female') : '', ageNum(mm.age), gr.filter(G => inRange(ageNum(mm.age), G.min, G.max)).map(G => G.name).join(', '), r ? r.name : t('noRate'), f.phone || '']; })));
+  add(t('t_people'), [['#', t('name'), t('relation'), t('famHead'), t('side'), t('category'), t('dept'), t('gender'), t('age'), t('group'), t('rate'), t('phone'), t('tshirt')]].concat(
+    persons().map(({ m: mm, f }, i) => { const r = rateFor(mm, f, p); return [i + 1, mm.name || '', relLabel(mm.rel), famName(f), f.side === 'out' ? t('outsideShort') : t('inside'), f.cat || '', deptName(f), mm.g === 'M' ? t('male') : mm.g === 'F' ? t('female') : '', ageNum(mm.age), gr.filter(G => inRange(ageNum(mm.age), G.min, G.max)).map(G => G.name).join(', '), r ? r.name : t('noRate'), f.phone || '', tsLabel(mm)]; })));
+  { const T = tsOf(p), q = tsStats(); if (T.sizes.length && q.total) { const rows = [[t('tsSizeH'), t('tsCount'), t('tsExtra'), t('total'), t('tsPrice'), t('tsCostEst')]];
+    T.sizes.forEach(z => { const e = Number(T.extra[z]) || 0; rows.push([z, q.by[z], e, q.by[z] + e, T.price, (q.by[z] + e) * T.price]); });
+    rows.push([t('total'), q.people, q.extraN, q.total, '', q.cost], [], [t('tsUnset'), q.unset], [t('tsNoNeed'), q.none]); add(t('tshirt'), rows); } }
   add(t('ageGroups'), [[t('group'), t('ageRangeH'), t('total'), t('male'), t('female'), t('inside'), t('outsideShort')]].concat(s.groups.map(G => [G.g.name, rangeLabel(G.g.min, G.g.max), G.total, G.m, G.f, G.inn, G.out])).concat(s.unknown ? [[t('unknownAge'), '', s.unknown]] : []));
   { const G = busGroups(), rows = [[t('bus'), t('famHead'), t('people'), t('seatsNeed'), t('category'), t('side')]];
     const put = (label, fams) => fams.forEach(f => rows.push([label, famName(f), famSize(f), famSeats(f), f.cat || '', f.side === 'out' ? t('outsideShort') : t('inside')]));
@@ -1226,9 +1231,85 @@ function openBusSetup(){
     foot: () => `<button class="btn" data-a="busSave">${ic('check')}${esc(t('save'))}</button>` });
 }
 
+/* ================= phase 7: T-shirt management ================= */
+const TS_DEFAULT = ['S', 'M', 'L', 'XL', 'XXL'];
+function tsOf(p){
+  const x = (p && p.tshirt) || {};
+  const ma = (x.minAge == null || x.minAge === '' || !isFinite(Number(x.minAge))) ? 5 : Number(x.minAge);
+  return { sizes: Array.isArray(x.sizes) ? x.sizes : TS_DEFAULT, price: Number(x.price) || 0, minAge: ma, extra: x.extra || {}, bud: x.bud || '' };
+}
+const tsFull = p => { const T = tsOf(p); return { sizes: T.sizes.slice(), price: T.price, minAge: T.minAge, extra: Object.assign({}, T.extra), bud: T.bud }; };
+const tsSave = patch => { const p = prog(); return patchProg({ tshirt: Object.assign(tsFull(p), patch) }); };
+function tsState(m, T){
+  if (m.ts === '-') return { k: 'none' };
+  if (m.ts && T.sizes.includes(m.ts)) return { k: 'size', s: m.ts };
+  const a = ageNum(m.age); if (a != null && a < T.minAge) return { k: 'none', auto: true };
+  return { k: 'unset' };
+}
+const tsLabel = m => { const st = tsState(m, tsOf(prog())); return st.k === 'size' ? st.s : st.k === 'none' ? t('tsNoNeed') : ''; };
+function tsStats(){
+  const T = tsOf(prog()), by = {}; T.sizes.forEach(s => { by[s] = 0; });
+  let none = 0, unset = 0;
+  S.fam.forEach(f => (f.members || []).forEach(m => { const st = tsState(m, T); if (st.k === 'size') by[st.s]++; else if (st.k === 'none') none++; else unset++; }));
+  const people = T.sizes.reduce((a, s) => a + by[s], 0), extraN = T.sizes.reduce((a, s) => a + (Number(T.extra[s]) || 0), 0), total = people + extraN;
+  return { by, none, unset, people, extraN, total, price: T.price, cost: total * T.price };
+}
+function tshirtView(){
+  const p = prog(), T = tsOf(p), q = tsStats(), adm = isAdmin(), canSet = can('members');
+  const head = `<div class="sec-h"><h2>${esc(t('tshirt'))}</h2>${adm ? `<button class="linkbtn small" data-a="tsSetup">${esc(t('tsSetup'))}</button>` : ''}</div>`;
+  if (!T.sizes.length) return head + emptyBox('shirt', t('tsNoSizes'), adm ? `<button class="btn" data-a="tsSetup">${ic('edit')}${esc(t('tsSetup'))}</button>` : '');
+  const line = T.bud && S.bud.find(b => b.id === T.bud), actual = line ? spentOn(line.id) : 0, bAmt = line ? Number(line.amount) || 0 : 0;
+  const rows = T.sizes.map(s => { const e = Number(T.extra[s]) || 0;
+    const ex = adm ? `<span class="stepper"><button type="button" class="ib" data-a="tsExtra" data-s="${esc(s)}" data-d="-1" ${e <= 0 ? 'disabled' : ''} aria-label="-">−</button><b class="num">${nf(e)}</b><button type="button" class="ib" data-a="tsExtra" data-s="${esc(s)}" data-d="1" aria-label="+">+</button></span>` : nf(e);
+    return `<tr><td><b>${esc(s)}</b></td><td>${nf(q.by[s])}</td><td>${ex}</td><td><b>${nf(q.by[s] + e)}</b></td></tr>`; }).join('');
+  const items = []; S.fam.forEach(f => (f.members || []).forEach(m => items.push({ f, m, st: tsState(m, T) })));
+  const shown = S.tsOnly ? items.filter(x => x.st.k === 'unset') : items;
+  const list = shown.length ? `<section class="card" style="padding-block:4px"><div class="list">${shown.map(({ f, m, st }) => {
+    const cur = st.k === 'size' ? st.s : (st.k === 'none' && !st.auto) ? '-' : '';
+    const sub = [famName(f), ageNum(m.age) != null ? nf(m.age) : '', st.auto ? t('tsAutoNone') : ''].filter(Boolean).map(esc).join(' · ');
+    return `<div class="item"><div class="body"><div class="title">${esc(m.name || '—')}</div><div class="small muted">${sub}</div></div>
+      <select class="in" style="width:auto;min-width:112px;flex:none" data-tsm="${esc(f.id)}|${esc(m.id)}" ${canSet ? '' : 'disabled'} aria-label="${esc(t('tsSizeLbl'))}"><option value="">${esc(t('tsUnsetOpt'))}</option><option value="-" ${cur === '-' ? 'selected' : ''}>${esc(t('tsNoNeed'))}</option>${T.sizes.map(s => `<option value="${esc(s)}" ${cur === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>`; }).join('')}</div></section>`
+    : emptyBox('shirt', S.tsOnly ? t('tsAllDone') : t('noFamilies'));
+  return `${head}
+  <section class="hero-card"><div class="grid3">${tileH(t('tsTotal'), nf(q.total))}${tileH(t('tsPeople'), nf(q.people))}${tileH(t('tsUnset'), nf(q.unset), q.unset ? 'color:var(--bad)' : '')}</div>
+    ${q.none ? `<div class="small muted">${esc(t('tsNoneN', nf(q.none)))}</div>` : ''}
+    <div class="row"><button class="btn ghost sm" data-a="tsShare">${ic('share')}${esc(t('tsShare'))}</button></div></section>
+  <section class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>${esc(t('tsSizeH'))}</th><th>${esc(t('tsCount'))}</th><th>${esc(t('tsExtra'))}</th><th>${esc(t('total'))}</th></tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr><td>${esc(t('total'))}</td><td>${nf(q.people)}</td><td>${nf(q.extraN)}</td><td>${nf(q.total)}</td></tr></tfoot></table></div></section>
+  <section class="card"><div class="grid3">${tileH(t('tsPrice'), T.price ? tk(T.price) : '—')}${tileH(t('tsCostEst'), tk(q.cost))}${line ? tileH(t('tsActual'), tk(actual)) : ''}</div>
+    ${line ? `<div class="small muted" style="margin-top:10px">${esc(t('budget'))}: ${tk(bAmt)}</div><div class="bar thin" style="margin-top:4px"><i class="${barCls(actual, bAmt)}" style="width:${barW(actual, bAmt)}%"></i></div>` : ''}
+    ${!T.price ? `<p class="small muted" style="margin:10px 0 0">${esc(t('tsNoPrice'))}</p>` : ''}
+    <div class="row" style="margin-top:12px;flex-wrap:wrap">${adm && q.cost > 0 ? `<button class="btn ghost sm" data-a="tsToBudget">${ic('pie')}${esc(line ? t('tsBudUpdate') : t('tsToBudget'))}</button>` : ''}${can('expense') ? `<button class="btn sm" data-a="tsAddExp" data-bud="${line ? esc(line.id) : ''}">${ic('plus')}${esc(t('tsAddExp'))}</button>` : ''}</div></section>
+  <div class="sec-h"><h2>${esc(t('tsWho'))}</h2></div>
+  <div class="seg"><button class="${S.tsOnly ? '' : 'on'}" data-a="tsFilter" data-v="0">${esc(t('tsAll'))}</button><button class="${S.tsOnly ? 'on' : ''}" data-a="tsFilter" data-v="1">${esc(t('tsOnlyUnset'))} (${nf(q.unset)})</button></div>
+  ${!canSet ? `<div class="note-box small">${esc(t('readOnly'))}</div>` : ''}
+  ${list}`;
+}
+async function setShirt(key, v){
+  const [fid, mid] = String(key).split('|'); const f = S.fam.find(x => x.id === fid); if (!f || !can('members')) return;
+  const d = Object.assign(strip(f), { updatedAt: Date.now() }); d.members = (f.members || []).map(m => m.id === mid ? Object.assign({}, m, { ts: v }) : m);
+  if (await commit('editFamily', [{ path: famPath(), id: fid, data: d }], null, true)) render();
+}
+function sizeRow(s){
+  const sb = 'style="background:var(--surface-2);color:var(--ink)"';
+  return `<div class="mem" data-old="${esc(s)}"><div class="mem-top"><input class="in s-name" value="${esc(s)}" placeholder="${esc(t('tsSizeH'))}" aria-label="${esc(t('tsSizeH'))}"><button type="button" class="iconbtn" ${sb} data-a="rowUp" aria-label="up">${ic('up')}</button><button type="button" class="iconbtn" ${sb} data-a="rowDown" aria-label="down">${ic('down')}</button><button type="button" class="iconbtn" style="background:var(--bad-soft);color:var(--bad)" data-a="rowDel" aria-label="${esc(t('del'))}">${ic('trash')}</button></div></div>`;
+}
+function openTsSetup(){
+  const T = tsOf(prog());
+  openSheet({ title: t('tsSetup'), body: () => `<p class="small muted" style="margin:0">${esc(t('tsSizesHint'))}</p><div class="stack" id="rows">${T.sizes.map(sizeRow).join('')}</div><button type="button" class="btn ghost" data-a="tsSizeAdd">${ic('plus')}${esc(t('tsAddSize'))}</button>
+    <div class="grid2"><div class="field"><label for="tsPrice">${esc(t('tsPrice'))}</label>${calcInput('tsPrice', T.price || null)}</div><div class="field"><label for="tsMinAge">${esc(t('tsMinAge'))}</label><input class="in" id="tsMinAge" inputmode="decimal" value="${esc(T.minAge)}"></div></div><div class="small muted">${esc(t('tsMinAgeHint'))}</div>`,
+    foot: () => `<button class="btn" data-a="tsSetupSave">${ic('check')}${esc(t('save'))}</button>` });
+}
+function tsText(){
+  const p = prog(), T = tsOf(p), q = tsStats(), L = [`*${p.name}* — ${t('tshirt')}`, ''];
+  T.sizes.forEach(s => { const n = q.by[s] + (Number(T.extra[s]) || 0); if (n) L.push(`${s} - ${nf(n)}`); });
+  L.push('', `${t('tsTotal')}: ${nf(q.total)}`); if (T.price) L.push(`${t('tsCostEst')}: ${tk(q.cost)}`);
+  return L.join('\n');
+}
+
 /* ================= phase 6: customizable dashboard ================= */
-const DASH_TYPES = { people:'totalPeople', depts:'byDept', seats:'busSeats', chanda:'t_chanda', money:'money', gifts:'gifts', ages:'byAge', cats:'byCat', note:'progNote', stat:'customCard' };
-const DASH_BUILTIN = ['people', 'depts', 'seats', 'chanda', 'money', 'gifts', 'ages', 'cats', 'note'];
+const DASH_TYPES = { people:'totalPeople', depts:'byDept', seats:'busSeats', tshirt:'tshirt', chanda:'t_chanda', money:'money', gifts:'gifts', ages:'byAge', cats:'byCat', note:'progNote', stat:'customCard' };
+const DASH_BUILTIN = ['people', 'depts', 'seats', 'tshirt', 'chanda', 'money', 'gifts', 'ages', 'cats', 'note'];
 const dashDefault = () => DASH_BUILTIN.map(k => ({ id: k, type: k, size: 'full', title: '', cfg: {} }));
 const dashOf = p => Array.isArray((p || {}).dash) ? p.dash : dashDefault();
 const dashTitle = c => c.title || t(DASH_TYPES[c.type] || 'customCard');
@@ -1241,6 +1322,8 @@ function metricCatalog(){
   add(g2, 'due', t('due'), s.due, 1); add(g2, 'paid', t('collected'), s.paid, 1); add(g2, 'rem', t('remaining'), Math.max(0, s.due - s.paid), 1);
   add(g3, 'income', t('income'), m.income, 1); add(g3, 'spent', t('spent'), m.spent, 1); add(g3, 'bal', m.bal >= 0 ? t('inHand') : t('deficit'), Math.abs(m.bal), 1);
   add(g4, 'seatsNeed', t('seatsNeed'), q.need); add(g4, 'seatsFree', t('noSeat'), q.free); add(g4, 'seatsOwn', t('ownCarP'), q.own);
+  { const T = tsOf(prog()), tq = tsStats(), g8 = t('tshirt');
+    if (T.sizes.length && (tq.people || tq.extraN)) { add(g8, 'tsTotal', t('tsTotal'), tq.total); T.sizes.forEach(z => add(g8, 'ts:' + z, z, tq.by[z] + (Number(T.extra[z]) || 0))); if (T.price) add(g8, 'tsCost', t('tsCostEst'), tq.cost, 1); add(g8, 'tsUnset', t('tsUnset'), tq.unset); } }
   deptStats().forEach(r => { if (r.key === '' && !r.fams) return; add(g5, 'd:' + r.key, r.name + ' · ' + t('people'), r.persons); add(g5, 'dp:' + r.key, r.name + ' · ' + t('collected'), r.paid, 1); });
   Object.keys(s.cats).forEach(c => add(g6, 'c:' + c, (c || t('noCat')) + ' · ' + t('people'), s.cats[c].persons));
   s.groups.forEach(G => add(g7, 'a:' + G.g.id, G.g.name + ' (' + rangeLabel(G.g.min, G.g.max) + ')', G.total));
@@ -1266,6 +1349,12 @@ const DR = {
     if (!S.fam.length) return ''; const q = seatStats(), a = seatAgeOf(prog());
     const tl = (k, v, sub) => `<div class="tile"><div class="k">${esc(k)}</div><div class="v num">${nf(v)}</div>${sub ? `<div class="small muted">${esc(sub)}</div>` : ''}</div>`;
     return `<section class="card tap" data-a="tab" data-v="bus" role="button" tabindex="0"><h3>${esc(dashTitle(c))}</h3><div class="grid3">${tl(t('seatsNeed'), q.need)}${tl(t('noSeat'), q.free, t('underAge', nf(a)))}${tl(t('ownCarP'), q.own)}</div></section>`;
+  },
+  tshirt: c => {
+    const T = tsOf(prog()), q = tsStats(); if (!T.sizes.length || !(q.people || q.extraN)) return '';
+    return `<section class="card tap" data-a="tab" data-v="tshirt" role="button" tabindex="0"><div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(dashTitle(c))}</h3><b class="num">${esc(t('tsTotalN', nf(q.total)))}</b></div>
+      <div class="grid3" style="margin-top:10px">${T.sizes.map(z => `<div class="tile"><div class="k">${esc(z)}</div><div class="v num">${nf(q.by[z] + (Number(T.extra[z]) || 0))}</div></div>`).join('')}</div>
+      ${T.price ? `<div class="small muted" style="margin-top:8px">${esc(t('tsCostEst'))}: <b class="num">${tk(q.cost)}</b></div>` : ''}${q.unset ? `<div class="small" style="margin-top:4px;color:var(--bad)">${esc(t('tsUnsetN', nf(q.unset)))}</div>` : ''}</section>`;
   },
   chanda: c => {
     const s = stats(); const pct = s.due > 0 ? Math.min(100, Math.round(s.paid / s.due * 100)) : 0;
@@ -1424,6 +1513,36 @@ const A = {
     if (await patchProg({ rates: rs })) closeSheet(); },
   cats: () => openCats(),
   depts: () => openDepts(),
+  tsFilter: el => { S.tsOnly = el.dataset.v === '1'; render(); },
+  tsShare: () => openShare(tsText(), t('tshirt')),
+  tsSetup: () => openTsSetup(),
+  tsSizeAdd: el => { const sh = el.closest('.sheet'); $('#rows', sh).insertAdjacentHTML('beforeend', sizeRow('')); $$('#rows .s-name', sh).pop().focus(); },
+  tsExtra: el => { const s = el.dataset.s, d = Number(el.dataset.d) || 0, ex = Object.assign({}, tsOf(prog()).extra); const n = Math.max(0, (Number(ex[s]) || 0) + d); if (n) ex[s] = n; else delete ex[s]; return tsSave({ extra: ex }); },
+  tsAddExp: el => openExpense(null, el.dataset.bud || ''),
+  tsToBudget: async () => { const p = prog(), T = tsOf(p), q = tsStats(); if (!isAdmin()) return;
+    const line = T.bud && S.bud.find(b => b.id === T.bud), id = line ? line.id : DB.rid();
+    const bdoc = line ? Object.assign(strip(line), { amount: q.cost }) : { name: t('tshirt'), parent: '', amount: q.cost, note: '', order: Date.now(), at: Date.now(), by: myName() };
+    const pdoc = Object.assign(strip(p), { tshirt: Object.assign(tsFull(p), { bud: id }), updatedAt: Date.now() });
+    await commit(line ? 'editBudget' : 'addBudget', [{ path: budPath(), id, data: bdoc }, { path: 'programs', id: p.id, data: pdoc }]); },
+  tsSetupSave: async el => {
+    const sh = el.closest('.sheet'), p = prog(), T = tsOf(p);
+    const rows = $$('[data-old]', sh).map(r => ({ old: r.dataset.old, nw: $('.s-name', r).value.trim() })).filter(r => r.nw);
+    const names = rows.map(r => r.nw);
+    if (new Set(names.map(x => x.toLowerCase())).size !== names.length) { toast(t('tsDup')); return; }
+    const map = Object.create(null); rows.forEach(r => { if (r.old) map[r.old] = r.nw; });
+    const removed = T.sizes.filter(z => !(z in map));
+    const ops = []; let cleared = 0;
+    S.fam.forEach(f => { let ch = false;
+      const ms = (f.members || []).map(m => { if (!m.ts || m.ts === '-') return m; let nt = m.ts; if (m.ts in map) nt = map[m.ts]; else if (removed.includes(m.ts)) nt = ''; if (nt === m.ts) return m; ch = true; if (!nt) cleared++; return Object.assign({}, m, { ts: nt }); });
+      if (ch) ops.push({ path: famPath(), id: f.id, data: Object.assign(strip(f), { members: ms }) }); });
+    const extra = {}; Object.keys(T.extra).forEach(k => { if (k in map) extra[map[k]] = (extra[map[k]] || 0) + (Number(T.extra[k]) || 0); });
+    const ma = parseNum($('#tsMinAge', sh).value);
+    const patch = { tshirt: { sizes: names, price: parseNum($('#tsPrice', sh).value) || 0, minAge: ma == null ? '' : ma, extra, bud: T.bud || '' } };
+    if (Array.isArray(p.dash)) patch.dash = p.dash.map(c => (c.type === 'stat' && c.cfg && Array.isArray(c.cfg.items)) ? Object.assign({}, c, { cfg: Object.assign({}, c.cfg, { items: c.cfg.items.map(k => { const m = /^ts:(.*)$/.exec(k); return (m && (m[1] in map)) ? 'ts:' + map[m[1]] : k; }) }) }) : c);
+    ops.unshift({ path: 'programs', id: p.id, data: Object.assign(strip(p), patch, { updatedAt: Date.now() }) });
+    const go = async () => { if (await commit('editProgram', ops)) closeSheet(); };
+    if (cleared) confirmBox(t('tsDelSure', cleared), go, t('yesRemove')); else go();
+  },
   deptAdd: el => { const sh = el.closest('.sheet'); $('#rows', sh).insertAdjacentHTML('beforeend', deptRow('')); $$('#rows .d-name', sh).pop().focus(); },
   deptsSave: async el => {
     const sh = el.closest('.sheet'), p = prog();
@@ -1570,7 +1689,7 @@ document.addEventListener('input', e => {
   if (e.target.id === 'cq') { S.cq = e.target.value; const la = $('#listArea'); if (la) la.innerHTML = chandaList(); }
   if (e.target.id === 'eq') { S.eq = e.target.value; const la = $('#listArea'); if (la) la.innerHTML = expList(); }
 });
-document.addEventListener('change', e => { if (e.target.id === 'pcat') { S.cat = e.target.value; render(); } if (e.target.id === 'expBud') { S.expBud = e.target.value; render(); } });
+document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.tsm) { setShirt(e.target.dataset.tsm, e.target.value); return; } if (e.target.id === 'pcat') { S.cat = e.target.value; render(); } if (e.target.id === 'expBud') { S.expBud = e.target.value; render(); } });
 function loginMsg(err){
   const c = (err && err.code) || '';
   if (/popup-closed-by-user|cancelled-popup-request|user-cancelled/.test(c)) return '';
@@ -1604,8 +1723,9 @@ window.PM_SEED = function(mem, rid, empty, lang){
     rates:[{ id:rid(), name: L('৩ বছরের নিচে', 'Under 3'), amount:0, side:'any', cat:'', min:null, max:3 }, { id:rid(), name: CONS, amount:3000, side:'in', cat: CONS, min:18, max:null },
       { id:rid(), name: L('বাইরের অতিথি', 'Outside guest'), amount:1200, side:'out', cat:'', min:12, max:null }, { id:rid(), name: L('শিশু (৩ থেকে ১২)', 'Child (3 to 12)'), amount:500, side:'any', cat:'', min:3, max:12 },
       { id:rid(), name: L('প্রাপ্তবয়স্ক', 'Adult'), amount:1000, side:'any', cat:'', min:12, max:null }],
+    tshirt: { sizes:['S','M','L','XL','XXL'], price:350, minAge:5, extra:{ L:2 }, bud:'' },
     categories:[CONS, DOC, SIS, STF, GST] } };
-  const M = (name, rel, g, age) => ({ id: rid(), name, rel, g, age, rate:'' });
+  let tsN = 0; const M = (name, rel, g, age) => ({ id: rid(), name, rel, g, age, rate:'', ts: age >= 12 ? ['M','L','XL','S','L','XXL'][(tsN++) % 6] : '' });
   const fams = [
     ['in', CONS, [M(L('ডা. নমুনা রহমান', 'Dr. Sample Rahman'), SELF, 'M', 52), M(L('নমুনা বেগম', 'Mrs. Rahman'), WIFE, 'F', 46), M(L('আরিয়ান', 'Ariyan'), SON, 'M', 14)]],
     ['in', DOC, [M(L('ডা. সাদিয়া (নমুনা)', 'Dr. Sadia (sample)'), SELF, 'F', 34), M(L('তানভীর', 'Tanvir'), HUS, 'M', 37), M(L('আয়রা', 'Ayra'), DAU, 'F', 6), M(L('রাইয়ান', 'Rayan'), SON, 'M', 2)]],
@@ -1657,5 +1777,5 @@ window.PM_SEED = function(mem, rid, empty, lang){
 /* ================= start ================= */
 applyPrefs(); render();
 if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.PM_NO_SW) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
-window.PM_TEST = { dashOf, dashDefault, metricCatalog, deptStats, seatStats, famSeats, busGroups, drawBuses, busText, collectBackup, restoreBackup, giftGroupsOf, lcSave, evalExpr, autoRate, rateFor, famDue, inRange, parseNum, stats, S, buildWorkbook, giftInfo, ledger };
+window.PM_TEST = { tsOf, tsStats, tsState, dashOf, dashDefault, metricCatalog, deptStats, seatStats, famSeats, busGroups, drawBuses, busText, collectBackup, restoreBackup, giftGroupsOf, lcSave, evalExpr, autoRate, rateFor, famDue, inRange, parseNum, stats, S, buildWorkbook, giftInfo, ledger };
 })();

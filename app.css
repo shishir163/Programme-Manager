@@ -272,3 +272,8 @@ textarea.in{min-height:90px;resize:vertical}
 .dcard.half .ib{height:30px;min-width:30px;padding:0 4px}
 .dcard.half .ib svg{width:16px;height:16px}
 .ib[data-a="dashSize"]{background:var(--brand-soft);color:var(--brand)}
+
+/* ===== phase 7: T-shirt ===== */
+.stepper{display:inline-flex;align-items:center;gap:8px}
+.stepper .ib{height:30px;min-width:30px;font-size:1.1rem}
+.item select.in{padding-block:8px}
