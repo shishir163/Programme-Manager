@@ -133,7 +133,7 @@ async function commit(label, ops, msg, quiet){
     S.undo.push(entry); if (S.undo.length > 30) S.undo.shift();
     if (!quiet) toast(msg || t('saved'), true); renderBandOnly(); setTimeout(refreshLive, 40);
     return true;
-  } catch(e) { console.error(e); toast(t('saveFail')); return false; }
+  } catch(e) { console.error(e); const code = (e && (e.code || e.message)) || 'error'; showWriteFail(code); return false; }
 }
 async function undoLast(){
   const e = S.undo.pop();
@@ -1082,15 +1082,16 @@ function syncStrip(){
 }
 window.addEventListener('pm-sync', e => {
   S.sync.pending = (e.detail && e.detail.pending) || 0;
-  if (e.detail && e.detail.error) {
-    const code = e.detail.error; S.lastWriteErr = { code, at: Date.now() };
-    toast(t('writeFail') + ' ' + code);
-    if (!S._wfAt || Date.now() - S._wfAt > 20000) { S._wfAt = Date.now();
-      openSheet({ title: t('writeFailTitle'), body: () => `<div class="err">${esc(code)}</div><p style="margin:0">${esc(diagWhy(code))}</p><p class="small muted" style="margin:0">${esc(t('writeFailHint'))}</p>`,
-        foot: () => `<button class="btn ghost" data-a="closeSheet">${esc(t('close'))}</button><button class="btn" data-a="diagOpen">${ic('cloud')}${esc(t('diagTitle'))}</button>` }); }
-  }
+  if (e.detail && e.detail.error) showWriteFail(e.detail.error);
   renderBandOnly();
 });
+function showWriteFail(code){
+  S.lastWriteErr = { code, at: Date.now() };
+  toast(t('saveFail') + ' ' + code);
+  if (!S._wfAt || Date.now() - S._wfAt > 20000) { S._wfAt = Date.now();
+    openSheet({ title: t('writeFailTitle'), body: () => `<div class="err" style="overflow-wrap:anywhere">${esc(code)}</div><p style="margin:0">${esc(diagWhy(code))}</p><p class="small muted" style="margin:0">${esc(t('writeFailHint'))}</p>`,
+      foot: () => `<button class="btn ghost" data-a="closeSheet">${esc(t('close'))}</button><button class="btn" data-a="diagOpen">${ic('cloud')}${esc(t('diagTitle'))}</button>` }); }
+}
 function diagWhy(code){
   const c = String(code || '');
   if (c === 'permission-denied') return t('why_denied');
@@ -1610,7 +1611,7 @@ const A = {
   diagOpen: () => { closeAll(); openDiag(); },
   diagRun: async el => { const sh = el.closest('.sheet'), out = $('#diagOut', sh); if (!prog()) return; el.disabled = true; out.innerHTML = `<p class="muted" style="margin:0">${esc(t('diagRunning'))}</p>`;
     const targets = [[t('t_people'), famPath()], [t('payments'), payPath()], [t('expenses'), expPath()], [t('t_notes'), notePath()]]; const rows = [];
-    for (const [n, path] of targets) rows.push([n, await DB.probe(path, '__probe__')]);
+    for (const [n, path] of targets) rows.push([n, await DB.probe(path, 'pm-probe')]);
     out.innerHTML = `<div class="card flat" style="padding-block:4px"><div class="list">${rows.map(([n, r]) => `<div class="item"><div class="body"><div class="title">${esc(n)}</div>${r.ok ? '' : `<div class="small" style="color:var(--bad)">${esc(r.code)} — ${esc(diagWhy(r.code))}</div>`}</div><span class="pill ${r.ok ? 'ok' : 'bad'}">${r.ok ? '✓' : '✗'}</span></div>`).join('')}</div></div>`;
     el.disabled = false; },
   catsSave: async el => { const v = $('#catsTxt', el.closest('.sheet')).value.split('\n').map(x => x.trim()).filter(Boolean); if (await patchProg({ categories: Array.from(new Set(v)) })) closeSheet(); },

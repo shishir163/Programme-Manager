@@ -102,7 +102,7 @@ window.PMDB = (function(){
     },
     watch(path, cb){
       let unsub = null, dead = false;
-      ready.then(() => { if (dead) return; unsub = fs.collection(path).onSnapshot(s => cb(s.docs.filter(d => d.id !== '__probe__').map(d => Object.assign({ id: d.id }, d.data()))), err => { console.warn(path, err); window.dispatchEvent(new CustomEvent('pm-db-error', { detail: { path, code: err && err.code } })); }); });
+      ready.then(() => { if (dead) return; unsub = fs.collection(path).onSnapshot(s => cb(s.docs.filter(d => d.id !== 'pm-probe').map(d => Object.assign({ id: d.id }, d.data()))), err => { console.warn(path, err); window.dispatchEvent(new CustomEvent('pm-db-error', { detail: { path, code: err && err.code } })); }); });
       return () => { dead = true; unsub && unsub(); };
     },
     async getAll(path){ await ready; const q = await fs.collection(path).get(); return q.docs.map(d => Object.assign({ id: d.id }, d.data())); },
