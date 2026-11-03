@@ -63,7 +63,7 @@ const I = {
   wallet:'<rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 10.5h18"/><path d="M15.5 15h2.5"/><path d="M6 6V5a2 2 0 0 1 2-2h9"/>',
   note:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h7M9 17h5"/>',
   more:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
-  shirt:'<path d="M8 3 3 6l2 4 3-1v12h8V9l3 1 2-4-5-3a4 4 0 0 1-8 0z"/>', expand:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', shrink:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
+  shirt:'<path d="M8 3 3 6l2 4 3-1v12h8V9l3 1 2-4-5-3a4 4 0 0 1-8 0z"/>', trophy:'<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4v1a3 3 0 0 0 4 3M16 6h4v1a3 3 0 0 1-4 3M12 13v4M8 20h8M10 17h4"/>', expand:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', shrink:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
   plus:'<path d="M12 5v14M5 12h14"/>', x:'<path d="M6 6l12 12M18 6 6 18"/>',
   search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   calc:'<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8 7h8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/>',
@@ -266,7 +266,7 @@ function render(){
   if (!S.loaded.users) { app.innerHTML = `<div class="empty" style="padding-top:30vh">${esc(t('loading'))}</div>`; return; }
   if (!S.profile || S.profile.active === false) { app.innerHTML = noAccessView(); return; }
   const v = S.view;
-  const body = !prog() && v !== 'more' ? noProgramView() : ({home:homeView, people:peopleView, income:incomeView, spend:spendView, notes:notesView, settle:settleView, bus:busView, tshirt:tshirtView, more:moreView}[v] || homeView)();
+  const body = !prog() && v !== 'more' ? noProgramView() : ({home:homeView, people:peopleView, income:incomeView, spend:spendView, notes:notesView, settle:settleView, bus:busView, tshirt:tshirtView, acts:actsView, more:moreView}[v] || homeView)();
   app.innerHTML = `${bandView()}<main class="wrap" id="main">${body}</main>${fabView()}${tabsView()}`;
   lcSchedule();
 }
@@ -282,7 +282,7 @@ function bandView(){
 }
 function tabsView(){
   const tabs = [['home','home'],['people','users'],['income','wallet'],['spend','receipt'],['more','more']];
-  const cur = ['notes','settle','bus','tshirt'].includes(S.view) ? 'more' : S.view;
+  const cur = ['notes','settle','bus','tshirt','acts'].includes(S.view) ? 'more' : S.view;
   return `<nav class="tabs" aria-label="menu"><div class="tabs-in">${tabs.map(([k, i]) => `<button class="tab ${cur === k ? 'on' : ''}" data-a="tab" data-v="${k}" ${cur === k ? 'aria-current="page"' : ''}>${ic(i)}<span>${esc(t('t_' + k))}</span></button>`).join('')}</div></nav>`;
 }
 function fabView(){
@@ -294,6 +294,7 @@ function fabView(){
   if (S.view === 'spend' && S.spendMode === 'exp' && can('expense')) return f('expNew', t('addExp'));
   if (S.view === 'spend' && S.spendMode === 'bud' && isAdmin()) return f('budNew', t('addBud'));
   if (S.view === 'spend' && S.spendMode === 'gift' && can('gift')) return f('giftNew', t('addGift'));
+  if (S.view === 'acts' && isAdmin()) return f('actNew', t('acAdd'));
   return '';
 }
 const avatar = (name, i) => { const n = `var(--f${(i % 4) + 1})`; return `<div class="avatar" style="background:color-mix(in srgb,${n} 26%,var(--surface));color:color-mix(in srgb,${n} 65%,var(--ink))">${esc((name || '?').trim().charAt(0))}</div>`; };
@@ -541,6 +542,7 @@ function moreView(){
     ${p ? item('tab', 'pie', t('budget'), tk(budTotals().total), 'data-v="spend" data-spend="bud"') : ''}
     ${p ? item('tab', 'gift', t('gifts'), nf(S.gifts.length), 'data-v="spend" data-spend="gift"') : ''}
     ${p ? item('tab', 'bus', t('buses'), t('famN', nf(S.fam.filter(f => busOf(f)).length)) + ' / ' + nf(S.fam.length), 'data-v="bus"') : ''}
+    ${p ? item('tab', 'trophy', t('acts'), actStats().n ? t('acN', nf(actStats().n)) : '', 'data-v="acts"') : ''}
     ${p ? item('tab', 'shirt', t('tshirt'), tsStats().total ? t('tsTotalN', nf(tsStats().total)) : '', 'data-v="tshirt"') : ''}
     ${p ? item('exportOpen', 'download', t('excel'), '') : ''}
     ${item('backupOpen', 'history', t('backup'), '')}
@@ -579,7 +581,8 @@ async function saveProg(id, root){
   let doc = Object.assign({}, prev ? strip(prev) : { ageGroups:[], rates:[], categories: P.lang === 'bn' ? ['কনসালটেন্ট','ডাক্তার','সিস্টার','স্টাফ','অতিথি'] : ['Consultant','Doctor','Sister','Staff','Guest'], createdAt: Date.now(), createdBy: myName() },
     { name, type, date: $('#gDate', root).value, venue: $('#gVenue', root).value.trim(), note: $('#gNote', root).value.trim(), updatedAt: Date.now() });
   const copy = $('#gCopy', root) && $('#gCopy', root).value;
-  if (copy) { const src = S.programs.find(x => x.id === copy); if (src) { doc.ageGroups = JSON.parse(JSON.stringify(src.ageGroups || [])); doc.giftGroups = JSON.parse(JSON.stringify(src.giftGroups || [])); doc.buses = JSON.parse(JSON.stringify(src.buses || [])); if (Array.isArray(src.depts)) doc.depts = src.depts.slice(); if (src.seatAge != null) doc.seatAge = src.seatAge; if (src.tshirt) doc.tshirt = Object.assign(JSON.parse(JSON.stringify(src.tshirt)), { extra: {}, bud: '' }); if (Array.isArray(src.dash)) doc.dash = JSON.parse(JSON.stringify(src.dash)); doc.rates = JSON.parse(JSON.stringify(src.rates || [])); doc.categories = (src.categories || []).slice(); } }
+  if (copy) { const src = S.programs.find(x => x.id === copy); if (src) { doc.ageGroups = JSON.parse(JSON.stringify(src.ageGroups || [])); doc.giftGroups = JSON.parse(JSON.stringify(src.giftGroups || [])); doc.buses = JSON.parse(JSON.stringify(src.buses || [])); if (Array.isArray(src.depts)) doc.depts = src.depts.slice(); if (src.seatAge != null) doc.seatAge = src.seatAge; if (Array.isArray(src.acts)) doc.acts = src.acts.map(a => Object.assign(JSON.parse(JSON.stringify(a)), { tSold: 0, recv: '', roles: (a.roles || []).map(r => ({ id: DB.rid(), role: r.role, names: '' })), prizes: (a.prizes || []).map(z => Object.assign({}, z, { id: DB.rid(), bought: false, winner: '' })) }));
+ if (src.tshirt) doc.tshirt = Object.assign(JSON.parse(JSON.stringify(src.tshirt)), { extra: {}, bud: '' }); if (Array.isArray(src.dash)) doc.dash = JSON.parse(JSON.stringify(src.dash)); doc.rates = JSON.parse(JSON.stringify(src.rates || [])); doc.categories = (src.categories || []).slice(); } }
   const pid = id || DB.rid(); const ops = [{ path:'programs', id: pid, data: doc }];
   if (copy) { try { const src = await DB.getAll(`programs/${copy}/budgets`); const map = {}; src.forEach(b => { map[b.id] = DB.rid(); });
     src.forEach(b => { const d = strip(b); d.parent = d.parent ? (map[d.parent] || '') : ''; d.at = Date.now(); ops.push({ path: `programs/${pid}/budgets`, id: map[b.id], data: d }); });
@@ -680,7 +683,8 @@ function summaryText(){
   if (s.groups.length) { L.push(''); L.push(`*${t('byAge')}*`); s.groups.forEach(G => L.push(`${G.g.name} (${rangeLabel(G.g.min, G.g.max)}): ${nf(G.total)} — ${t('male')} ${nf(G.m)}, ${t('female')} ${nf(G.f)}`)); if (s.unknown) L.push(`${t('unknownAge')}: ${nf(s.unknown)}`); }
   L.push(''); L.push(`*${t('t_chanda')}*`); L.push(`${t('due')}: ${tk(s.due)}`); L.push(`${t('collected')}: ${tk(s.paid)}`); L.push(`${t('remaining')}: ${tk(Math.max(0, s.due - s.paid))}`);
   if (S.gifts.length) { const G = giftTotals(); L.push(''); L.push(`*${t('gifts')}*`); L.push(`${t('need')} ${nf(G.need)} · ${t('bought')} ${nf(G.bought)} · ${t('given')} ${nf(G.given)}`); }
-  const m = money(), bt = budTotals(); L.push(''); L.push(`*${t('money')}*`); L.push(`${t('income')}: ${tk(m.income)} (${t('t_chanda')} ${tk(m.paid)} + ${t('sponsors')} ${tk(m.spRecv)})`); L.push(`${t('spent')}: ${tk(m.spent)}${bt.total ? ` / ${t('budTotal')} ${tk(bt.total)}` : ''}`); L.push(`${m.bal >= 0 ? t('inHand') : t('deficit')}: ${tk(Math.abs(m.bal))}`);
+  { const aq = actStats(); if (aq.n) { L.push(''); L.push(`*${t('acts')}*`); L.push(t('acStat', nf(aq.prizes), nf(aq.boughtN), nf(aq.won)) + ` · ${tk(aq.cost)}`); } }
+  const m = money(), bt = budTotals(); L.push(''); L.push(`*${t('money')}*`); L.push(`${t('income')}: ${tk(m.income)} (${t('t_chanda')} ${tk(m.paid)} + ${t('sponsors')} ${tk(m.spRecv)}${m.raffle ? ` + ${t('acRaffleInc')} ${tk(m.raffle)}` : ''})`); L.push(`${t('spent')}: ${tk(m.spent)}${bt.total ? ` / ${t('budTotal')} ${tk(bt.total)}` : ''}`); L.push(`${m.bal >= 0 ? t('inHand') : t('deficit')}: ${tk(Math.abs(m.bal))}`);
   return L.join('\n');
 }
 function namesText(){
@@ -735,7 +739,8 @@ const barW = (spent, amt) => amt > 0 ? Math.min(100, spent / amt * 100) : (spent
 function money(){
   const s = stats(); const cash = S.sp.filter(x => x.kind !== 'kind'), kind = S.sp.filter(x => x.kind === 'kind');
   const spRecv = sum(cash.filter(x => x.status === 'received')), spProm = sum(cash.filter(x => x.status !== 'received')), spent = sum(S.exp);
-  return { due: s.due, paid: s.paid, spRecv, spProm, kindN: kind.length, kindVal: sum(kind, x => x.value), income: s.paid + spRecv, spent, bal: s.paid + spRecv - spent };
+  const raffle = actStats().ticketInc;
+  return { due: s.due, paid: s.paid, spRecv, spProm, raffle, kindN: kind.length, kindVal: sum(kind, x => x.value), income: s.paid + spRecv + raffle, spent, bal: s.paid + spRecv + raffle - spent };
 }
 function knownPeople(){ const n = new Set(); const a = v => { v = (v || '').trim(); v && n.add(v); }; S.users.forEach(u => a(u.name)); S.pay.forEach(x => a(x.recv)); S.exp.forEach(x => a(x.paidBy)); S.sp.forEach(x => a(x.recv)); S.st.forEach(x => { a(x.from); a(x.to); }); return Array.from(n).sort(); }
 const peopleDL = () => `<datalist id="peopleList">${knownPeople().map(n => `<option value="${esc(n)}">`).join('')}</datalist>`;
@@ -892,6 +897,7 @@ function ledger(){
   const P2 = {}; const add = (n, f, v) => { n = (n || '').trim(); if (!n) return; (P2[n] = P2[n] || { name:n, took:0, spent:0, tin:0, tout:0 })[f] += Number(v) || 0; };
   S.pay.forEach(x => add(x.recv, 'took', x.amount));
   S.sp.forEach(x => { if (x.kind !== 'kind' && x.status === 'received') add(x.recv, 'took', x.amount); });
+  actsOf(prog()).forEach(a => { if (a.kind === 'raffle') add(a.recv, 'took', (Number(a.tSold) || 0) * (Number(a.tPrice) || 0)); });
   S.exp.forEach(x => add(x.paidBy, 'spent', x.amount));
   S.st.forEach(x => { add(x.from, 'tout', x.amount); add(x.to, 'tin', x.amount); });
   const rows = Object.values(P2).map(r => Object.assign(r, { held: Math.round((r.took - r.spent - r.tout + r.tin) * 100) / 100 })).sort((a, b) => b.held - a.held);
@@ -905,7 +911,7 @@ function settleView(){
   const state = r => r.held >= 1 ? `<span class="pill info">${esc(t('holds'))} ${tk(r.held)}</span>` : r.held <= -1 ? `<span class="pill warn">${esc(t('getsBack'))} ${tk(-r.held)}</span>` : `<span class="pill ok">${esc(t('even'))}</span>`;
   return `<div class="sec-h"><h2>${esc(t('settle'))}</h2></div>
   <section class="hero-card"><div class="grid3">${tileH(t('income'), tk(m.income))}${tileH(t('spent'), tk(m.spent))}${tileH(m.bal >= 0 ? t('inHand') : t('deficit'), tk(Math.abs(m.bal)), m.bal >= 0 ? 'color:var(--ok)' : 'color:var(--bad)')}</div>
-    <div class="small muted">${esc(t('t_chanda'))} ${tk(m.paid)} + ${esc(t('sponsors'))} ${tk(m.spRecv)}${m.due - m.paid > 0 ? ` · ${esc(t('chandaPending'))} ${tk(m.due - m.paid)}` : ''}${m.spProm ? ` · ${esc(t('spPromised'))} ${tk(m.spProm)}` : ''}</div></section>
+    <div class="small muted">${esc(t('t_chanda'))} ${tk(m.paid)} + ${esc(t('sponsors'))} ${tk(m.spRecv)}${m.raffle ? ` + ${esc(t('acRaffleInc'))} ${tk(m.raffle)}` : ''}${m.due - m.paid > 0 ? ` · ${esc(t('chandaPending'))} ${tk(m.due - m.paid)}` : ''}${m.spProm ? ` · ${esc(t('spPromised'))} ${tk(m.spProm)}` : ''}</div></section>
   <section class="card"><h3>${esc(t('perPerson'))}</h3>${L.rows.length ? `<div class="list">${L.rows.map((r, i) => `<div class="item">${avatar(r.name, i)}<div class="body"><div class="title">${esc(r.name)}</div>
       <div class="small muted num">${esc(t('took'))} ${tk(r.took)} · ${esc(t('gave'))} ${tk(r.spent)}${r.tin - r.tout ? ` · ${esc(t('transfers'))} ${r.tin - r.tout > 0 ? '+' : '−'}${tk(Math.abs(r.tin - r.tout))}` : ''}</div><div style="margin-top:4px">${state(r)}</div></div></div>`).join('')}</div>` : `<p class="small muted" style="margin:0">${esc(t('noPeopleYet'))}</p>`}
     <p class="small muted" style="margin:10px 0 0">${esc(t('settleHint'))}</p></section>
@@ -936,14 +942,15 @@ function giftMatches(g){
   const p = prog() || {}; const G = giftGroupsOf(p).find(x => x.id === g.group);
   return persons().filter(({ m, f }) => (!G || inRange(ageNum(m.age), G.min, G.max)) && (!g.gender || g.gender === 'any' || m.g === g.gender) && (!g.side || g.side === 'any' || f.side === g.side) && (!g.cat || (f.cat || '') === g.cat));
 }
-function giftInfo(g){ const rec = giftMatches(g); const need = (g.need != null && g.need !== '') ? Number(g.need) : rec.length; const bought = Number(g.bought) || 0; const given = rec.filter(r => (g.given || {})[r.m.id]).length; return { rec, need, bought, given, cost: need * (Number(g.price) || 0) }; }
+function giftInfo(g){ const rec = giftMatches(g); const need = (g.need != null && g.need !== '') ? Number(g.need) : rec.length; const bought = Number(g.bought) || 0; const given = rec.filter(r => (g.given || {})[r.m.id]).length; let adj = 0; rec.forEach(({ m }) => { const x = (g.per || {})[m.id]; if (x && x.c != null && x.c !== '' && isFinite(Number(x.c))) adj += Number(x.c) - (Number(g.price) || 0); });
+  return { rec, need, bought, given, adj, cost: need * (Number(g.price) || 0) + adj }; }
 function giftWho(g){ const p = prog() || {}; const G = giftGroupsOf(p).find(x => x.id === g.group); return [G ? G.name : t('allAges'), g.gender === 'M' ? t('male') : g.gender === 'F' ? t('female') : '', g.side === 'in' ? t('inside') : g.side === 'out' ? t('outsideShort') : '', g.cat || ''].filter(Boolean).join(' · '); }
 function giftStatus(i){ if (i.need > 0 && i.given >= i.need) return ['ok', t('g_allGiven')]; if (i.bought >= i.need) return ['info', t('g_allBought')]; return ['warn', t('g_toBuy', nf(i.need - i.bought))]; }
 function giftTotals(){ return S.gifts.reduce((a, g) => { const i = giftInfo(g); a.need += i.need; a.bought += i.bought; a.given += i.given; a.cost += i.cost; return a; }, { need:0, bought:0, given:0, cost:0 }); }
 function giftView(){
   const T = giftTotals(); const items = S.gifts.slice().sort(byOrder);
   return `<section class="hero-card"><div class="grid3">${tileH(t('need'), nf(T.need))}${tileH(t('bought'), nf(T.bought), T.bought >= T.need ? 'color:var(--ok)' : 'color:var(--warn)')}${tileH(t('given'), nf(T.given), 'color:var(--ok)')}</div>
-    ${T.cost ? `<div class="small muted">${esc(t('estCost'))}: <b class="num">${tk(T.cost)}</b></div>` : ''}</section>
+    ${T.cost ? `<div class="small muted">${esc(t('estCost'))}: <b class="num">${tk(T.cost)}</b></div>` : ''}${items.length ? `<div class="row"><button class="btn ghost sm" data-a="giftShareAll">${ic('share')}${esc(t('giftShareAll'))}</button></div>` : ''}</section>
   ${!can('gift') ? `<div class="note-box small">${esc(t('readOnly'))}</div>` : ''}
   ${items.length ? `<section class="card" style="padding-block:4px"><div class="list">${items.map((g, i) => { const inf = giftInfo(g), st = giftStatus(inf);
     return `<div class="item tap" data-a="giftOpen" data-id="${g.id}" role="button" tabindex="0"><div class="avatar" style="background:color-mix(in srgb,var(--f${(i % 4) + 1}) 26%,var(--surface));color:color-mix(in srgb,var(--f${(i % 4) + 1}) 65%,var(--ink))"><span style="width:22px;height:22px;display:inline-flex">${ic('gift')}</span></div>
@@ -959,12 +966,13 @@ function openGift(id){
       budHtml = `<div class="card flat"><div class="row" style="justify-content:space-between"><span class="small">${esc(budName(g.bud))}</span><span class="num small"><b>${tk(l.spent)}</b><span class="muted"> / ${tk(l.amt)}</span></span></div><div class="bar thin" style="margin-top:6px"><i class="${barCls(l.spent, l.amt)}" style="width:${barW(l.spent, l.amt)}%"></i></div></div>`; }
     return `<div class="row"><div class="grow"><div class="title strong" style="font-size:1.1rem">${esc(g.name)}</div><div class="small muted">${esc(giftWho(g))}</div></div><span class="pill ${st[0]}">${esc(st[1])}</span></div>
       <div class="grid3">${tileH(t('need'), nf(inf.need))}${tileH(t('bought'), nf(inf.bought))}${tileH(t('given'), nf(inf.given), 'color:var(--ok)')}</div>
-      ${inf.cost ? `<div class="small muted">${esc(t('estCost'))}: <b class="num">${tk(inf.cost)}</b> (${tk(g.price)} × ${nf(inf.need)})</div>` : ''}
+      ${inf.cost ? `<div class="small muted">${esc(t('estCost'))}: <b class="num">${tk(inf.cost)}</b>${inf.adj ? '' : ` (${tk(g.price)} × ${nf(inf.need)})`}</div>` : ''}
       ${budHtml}${g.note ? `<div class="note-box note-body">${esc(g.note)}</div>` : ''}
       <div class="card" style="padding-block:6px"><b>${esc(t('recipients'))}</b> <span class="small muted">${nf(inf.given)} / ${nf(inf.rec.length)}</span>
       ${inf.rec.length ? `<div class="list">${inf.rec.map(({ m, f }) => { const on = !!(g.given || {})[m.id];
-        return `<div class="item"><div class="body"><div class="title">${esc(m.name || '—')}</div><div class="small muted">${[m.id === (f.members[0] || {}).id ? (f.cat || '') : relLabel(m.rel) + ' · ' + famName(f), ageNum(m.age) != null ? nf(m.age) + ' ' + t('year') : ''].filter(Boolean).map(esc).join(' · ')}</div></div>
-          ${cg ? `<button class="give ${on ? 'on' : ''}" data-a="giveToggle" data-g="${g.id}" data-m="${esc(m.id)}" aria-pressed="${on}" aria-label="${esc(t('given'))}">${ic('check')}</button>` : (on ? `<span class="pill ok">${esc(t('given'))}</span>` : '')}</div>`; }).join('')}</div>` : `<p class="small muted" style="margin:6px 0">${esc(t('noRecipients'))}</p>`}</div>`; },
+        const px = (g.per || {})[m.id] || {};
+        return `<div class="item"><div class="body"><div class="title">${esc(m.name || '—')}</div>${px.n ? `<div class="small" style="color:var(--brand)">🎁 ${esc(px.n)}${px.c != null && px.c !== '' ? ` · ${tk(px.c)}` : ''}</div>` : ''}<div class="small muted">${[m.id === (f.members[0] || {}).id ? (f.cat || '') : relLabel(m.rel) + ' · ' + famName(f), ageNum(m.age) != null ? nf(m.age) + ' ' + t('year') : ''].filter(Boolean).map(esc).join(' · ')}</div></div>
+          ${cg ? `<button type="button" class="ib" data-a="perGift" data-g="${g.id}" data-m="${esc(m.id)}" aria-label="${esc(t('perGift'))}">${ic('edit')}</button><button class="give ${on ? 'on' : ''}" data-a="giveToggle" data-g="${g.id}" data-m="${esc(m.id)}" aria-pressed="${on}" aria-label="${esc(t('given'))}">${ic('check')}</button>` : (on ? `<span class="pill ok">${esc(t('given'))}</span>` : '')}</div>`; }).join('')}</div>` : `<p class="small muted" style="margin:6px 0">${esc(t('noRecipients'))}</p>`}</div>`; },
     foot: () => can('gift') ? `<button class="btn ghost" data-a="shareGift" data-id="${id}">${ic('share')}${esc(t('share'))}</button><button class="btn" data-a="giftEdit" data-id="${id}">${ic('edit')}${esc(t('edit'))}</button>` : `<button class="btn ghost" data-a="shareGift" data-id="${id}">${ic('share')}${esc(t('share'))}</button>` });
 }
 function readGiftForm(root){ return { name: $('#gfName', root).value.trim(), group: $('#gfGroup', root).value, gender: ($('[data-g="gen"].on', root) || { dataset:{ v:'any' } }).dataset.v, side: $('#gfSide', root).value, cat: $('#gfCat', root) ? $('#gfCat', root).value : '', need: parseNum($('#gfNeed', root).value), bought: parseNum($('#gfBought', root).value) || 0, price: parseNum($('#gfPrice', root).value), bud: $('#gfBud', root).value, note: $('#gfNote', root).value.trim() }; }
@@ -990,12 +998,12 @@ function openGiftForm(id){
 async function saveGift(id, root){
   const d = readGiftForm(root); if (!d.name) { toast(t('needName')); $('#gfName', root).focus(); return; }
   const prev = id ? S.gifts.find(x => x.id === id) : null;
-  const doc = Object.assign(d, { given: prev ? prev.given || {} : {}, order: prev ? prev.order || 0 : Date.now(), at: prev ? prev.at || Date.now() : Date.now(), by: myName() });
+  const doc = Object.assign(d, { given: prev ? prev.given || {} : {}, per: prev ? prev.per || {} : {}, order: prev ? prev.order || 0 : Date.now(), at: prev ? prev.at || Date.now() : Date.now(), by: myName() });
   if (await commit(id ? 'editGift' : 'addGift', [{ path: giftPath(), id: id || DB.rid(), data: doc }])) closeSheet();
 }
 function giftText(g){
   const inf = giftInfo(g); const L = [`*${prog().name}* — ${g.name}`, giftWho(g), `${t('need')} ${nf(inf.need)} · ${t('bought')} ${nf(inf.bought)} · ${t('given')} ${nf(inf.given)}`, ''];
-  inf.rec.forEach(({ m, f }, i) => L.push(`${nf(i + 1)}. ${(g.given || {})[m.id] ? '✅' : '⬜'} ${m.name || '—'}${m.id === (f.members[0] || {}).id ? '' : ` (${famName(f)})`}`));
+  inf.rec.forEach(({ m, f }, i) => { const x = (g.per || {})[m.id] || {}; L.push(`${nf(i + 1)}. ${(g.given || {})[m.id] ? '✅' : '⬜'} ${m.name || '—'}${m.id === (f.members[0] || {}).id ? '' : ` (${famName(f)})`}${x.n ? ' — ' + x.n : ''}`); });
   return L.join('\n');
 }
 function giftCard(c){
@@ -1028,6 +1036,12 @@ function buildWorkbook(){
   { const T = tsOf(p), q = tsStats(); if (T.sizes.length && q.total) { const rows = [[t('tsSizeH'), t('tsCount'), t('tsExtra'), t('total'), t('tsPrice'), t('tsCostEst')]];
     T.sizes.forEach(z => { const e = Number(T.extra[z]) || 0; rows.push([z, q.by[z], e, q.by[z] + e, T.price, (q.by[z] + e) * T.price]); });
     rows.push([t('total'), q.people, q.extraN, q.total, '', q.cost], [], [t('tsUnset'), q.unset], [t('tsNoNeed'), q.none]); add(t('tshirt'), rows); } }
+  { const A = actsOf(p); if (A.length) { const rows = [[t('acName'), t('acKind'), t('acWho'), t('acPos'), t('acGift'), t('acCost'), t('acBought'), t('acWinner')]];
+      A.forEach(a => { (a.prizes || []).forEach(z => rows.push([a.name, actKindLbl(a.kind), a.who || '', z.pos || '', z.gift || '', Number(z.cost) || 0, z.bought ? '✓' : '', z.winner || ''])); });
+      const q = actStats(); rows.push([], [t('total'), '', '', '', '', q.cost], [t('acBoughtCost'), '', '', '', '', q.boughtCost], [t('acTkSold'), '', '', '', '', q.tickets], [t('acRaffleInc'), '', '', '', '', q.ticketInc]);
+      add(t('acts'), rows);
+      const rr2 = [[t('acName'), t('acKind'), t('acWho'), t('acRolePh'), t('acNamesPh')]]; A.forEach(a => (a.roles || []).forEach(r => rr2.push([a.name, actKindLbl(a.kind), a.who || '', r.role || '', r.names || ''])));
+      add(t('acDutyTitle'), rr2); } }
   add(t('ageGroups'), [[t('group'), t('ageRangeH'), t('total'), t('male'), t('female'), t('inside'), t('outsideShort')]].concat(s.groups.map(G => [G.g.name, rangeLabel(G.g.min, G.g.max), G.total, G.m, G.f, G.inn, G.out])).concat(s.unknown ? [[t('unknownAge'), '', s.unknown]] : []));
   { const G = busGroups(), rows = [[t('bus'), t('famHead'), t('people'), t('seatsNeed'), t('category'), t('side')]];
     const put = (label, fams) => fams.forEach(f => rows.push([label, famName(f), famSize(f), famSeats(f), f.cat || '', f.side === 'out' ? t('outsideShort') : t('inside')]));
@@ -1045,7 +1059,7 @@ function buildWorkbook(){
   add(t('expenses'), [[t('date'), t('expTitle'), t('budget'), t('amount'), t('paidBy'), t('paidHow'), t('payee'), t('note')]].concat(S.exp.map(e => [e.date || '', e.title || '', budName(lineOf(e)), Number(e.amount) || 0, e.paidBy || '', meth(e.method), e.payee || '', e.note || ''])));
   add(t('settle'), [[t('name'), t('took'), t('gave'), t('transfers'), t('holds') + ' (+) / ' + t('getsBack') + ' (−)']].concat(Lg.rows.map(r => [r.name, r.took, r.spent, r.tin - r.tout, r.held])).concat([[], [t('suggest')]]).concat(Lg.sug.map(x => [x.from + ' → ' + x.to, x.amount])).concat([[], [t('transfers')], [t('date'), t('fromP'), t('toP'), t('amount'), t('note')]]).concat(S.st.map(x => [x.date || '', x.from, x.to, Number(x.amount) || 0, x.note || ''])));
   add(t('gifts'), [[t('giftName'), t('forWhom'), t('need'), t('bought'), t('given'), t('unitPrice'), t('estCost'), t('linkBud'), t('note')]].concat(S.gifts.slice().sort(byOrder).map(g => { const i = giftInfo(g); return [g.name, giftWho(g), i.need, i.bought, i.given, Number(g.price) || 0, i.cost, g.bud ? budName(g.bud) : '', g.note || '']; })));
-  const rr = [[t('giftName'), t('name'), t('famHead'), t('age'), t('given')]]; S.gifts.slice().sort(byOrder).forEach(g => giftInfo(g).rec.forEach(({ m: mm, f }) => rr.push([g.name, mm.name || '', famName(f), ageNum(mm.age), (g.given || {})[mm.id] ? '✓' : ''])));
+  const rr = [[t('giftName'), t('name'), t('famHead'), t('age'), t('perGift'), t('perGiftCost'), t('given')]]; S.gifts.slice().sort(byOrder).forEach(g => giftInfo(g).rec.forEach(({ m: mm, f }) => { const x = (g.per || {})[mm.id] || {}; rr.push([g.name, mm.name || '', famName(f), ageNum(mm.age), x.n || '', x.c == null || x.c === '' ? '' : Number(x.c), (g.given || {})[mm.id] ? '✓' : '']); }));
   add(t('recipients'), rr);
   add(t('t_notes'), [[t('title'), t('noteText'), t('byWhom2'), t('upd')]].concat(S.notes.map(n => [n.title || '', n.body || '', n.by || '', n.upd ? new Date(n.upd).toLocaleString(P.lang === 'bn' ? 'bn-BD' : 'en-GB') : ''])));
   return wb;
@@ -1290,13 +1304,13 @@ function tshirtView(){
     const ex = adm ? `<span class="stepper"><button type="button" class="ib" data-a="tsExtra" data-s="${esc(s)}" data-d="-1" ${e <= 0 ? 'disabled' : ''} aria-label="-">−</button><b class="num">${nf(e)}</b><button type="button" class="ib" data-a="tsExtra" data-s="${esc(s)}" data-d="1" aria-label="+">+</button></span>` : nf(e);
     return `<tr><td><b>${esc(s)}</b></td><td>${nf(q.by[s])}</td><td>${ex}</td><td><b>${nf(q.by[s] + e)}</b></td></tr>`; }).join('');
   const items = []; S.fam.forEach(f => (f.members || []).forEach(m => items.push({ f, m, st: tsState(m, T) })));
-  const shown = S.tsOnly ? items.filter(x => x.st.k === 'unset') : items;
+  const mode = S.tsMode || 'all', shown = mode === 'unset' ? items.filter(x => x.st.k === 'unset') : mode === 'got' ? items.filter(x => x.st.k === 'size') : items;
   const list = shown.length ? `<section class="card" style="padding-block:4px"><div class="list">${shown.map(({ f, m, st }) => {
     const cur = st.k === 'size' ? st.s : (st.k === 'none' && !st.auto) ? '-' : '';
     const sub = [famName(f), ageNum(m.age) != null ? nf(m.age) : '', st.auto ? t('tsAutoNone') : ''].filter(Boolean).map(esc).join(' · ');
     return `<div class="item"><div class="body"><div class="title">${esc(m.name || '—')}</div><div class="small muted">${sub}</div></div>
       <select class="in" style="width:auto;min-width:112px;flex:none" data-tsm="${esc(f.id)}|${esc(m.id)}" ${canSet ? '' : 'disabled'} aria-label="${esc(t('tsSizeLbl'))}"><option value="">${esc(t('tsUnsetOpt'))}</option><option value="-" ${cur === '-' ? 'selected' : ''}>${esc(t('tsNoNeed'))}</option>${T.sizes.map(s => `<option value="${esc(s)}" ${cur === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>`; }).join('')}</div></section>`
-    : emptyBox('shirt', S.tsOnly ? t('tsAllDone') : t('noFamilies'));
+    : emptyBox('shirt', mode === 'unset' ? t('tsAllDone') : mode === 'got' ? t('tsNoGot') : t('noFamilies'));
   return `${head}
   <section class="hero-card"><div class="grid3">${tileH(t('tsTotal'), nf(q.total))}${tileH(t('tsPeople'), nf(q.people))}${tileH(t('tsUnset'), nf(q.unset), q.unset ? 'color:var(--bad)' : '')}</div>
     ${q.none ? `<div class="small muted">${esc(t('tsNoneN', nf(q.none)))}</div>` : ''}
@@ -1308,7 +1322,7 @@ function tshirtView(){
     ${!T.price ? `<p class="small muted" style="margin:10px 0 0">${esc(t('tsNoPrice'))}</p>` : ''}
     <div class="row" style="margin-top:12px;flex-wrap:wrap">${adm && q.cost > 0 ? `<button class="btn ghost sm" data-a="tsToBudget">${ic('pie')}${esc(line ? t('tsBudUpdate') : t('tsToBudget'))}</button>` : ''}${can('expense') ? `<button class="btn sm" data-a="tsAddExp" data-bud="${line ? esc(line.id) : ''}">${ic('plus')}${esc(t('tsAddExp'))}</button>` : ''}</div></section>
   <div class="sec-h"><h2>${esc(t('tsWho'))}</h2></div>
-  <div class="seg"><button class="${S.tsOnly ? '' : 'on'}" data-a="tsFilter" data-v="0">${esc(t('tsAll'))}</button><button class="${S.tsOnly ? 'on' : ''}" data-a="tsFilter" data-v="1">${esc(t('tsOnlyUnset'))} (${nf(q.unset)})</button></div>
+  <div class="seg">${[['all', t('tsAll'), items.length], ['got', t('tsGot'), q.people], ['unset', t('tsOnlyUnset'), q.unset]].map(([k, l, n]) => `<button class="${mode === k ? 'on' : ''}" data-a="tsFilter" data-v="${k}">${esc(l)} (${nf(n)})</button>`).join('')}</div>
   ${!canSet ? `<div class="note-box small">${esc(t('readOnly'))}</div>` : ''}
   ${list}`;
 }
@@ -1334,9 +1348,165 @@ function tsText(){
   return L.join('\n');
 }
 
+/* ================= phase 8: activities (games, raffle, duties) + personal gifts ================= */
+const ACT_KINDS = ['game', 'raffle', 'duty'];
+const actsOf = p => Array.isArray((p || {}).acts) ? p.acts : [];
+const actsClone = () => JSON.parse(JSON.stringify(actsOf(prog())));
+const actUpdate = fn => { const a = actsClone(); fn(a); return patchProg({ acts: a }); };
+const actBudOf = p => Object.assign({ game: '', raffle: '' }, (p || {}).actBud || {});
+const actKindLbl = k => t('ak_' + (ACT_KINDS.includes(k) ? k : 'game'));
+const prizeBucket = a => a.kind === 'raffle' ? 'raffle' : 'game';
+const splitNames = s => String(s || '').split(/[,;\n،]+/).map(x => x.trim()).filter(Boolean);
+const posDef = (kind, i) => kind === 'raffle' ? nf(i + 1) : ([t('p1'), t('p2'), t('p3')][i] || nf(i + 1));
+function actStats(){
+  const o = { n: 0, cost: 0, boughtN: 0, boughtCost: 0, prizes: 0, won: 0, tickets: 0, ticketInc: 0, by: { game: { n: 0, cost: 0 }, raffle: { n: 0, cost: 0 } } };
+  actsOf(prog()).forEach(a => { o.n++; const b = o.by[prizeBucket(a)];
+    (a.prizes || []).forEach(z => { const c = Number(z.cost) || 0; o.prizes++; o.cost += c; b.n++; b.cost += c; if (z.bought) { o.boughtN++; o.boughtCost += c; } if (String(z.winner || '').trim()) o.won++; });
+    if (a.kind === 'raffle') { const n = Number(a.tSold) || 0; o.tickets += n; o.ticketInc += n * (Number(a.tPrice) || 0); } });
+  return o;
+}
+const actRolesLine = a => (a.roles || []).filter(r => r.role || r.names).map(r => `${r.role || '—'}: ${r.names || '—'}`).join(' · ');
+const memberNames = () => { const s = new Set(); persons().forEach(({ m }) => { const n = (m.name || '').trim(); if (n) s.add(n); }); return Array.from(s).sort(); };
+const memDL = () => `<datalist id="memList">${memberNames().map(n => `<option value="${esc(n)}">`).join('')}</datalist>`;
+function roleDL(){
+  const s = new Set([t('role_ref'), t('role_judge'), t('role_photo'), t('role_drone'), t('role_ticket'), t('role_anchor'), t('role_shirt'), t('role_prize')]);
+  actsOf(prog()).forEach(a => (a.roles || []).forEach(r => { if (r.role) s.add(r.role); }));
+  return `<datalist id="roleList">${Array.from(s).map(n => `<option value="${esc(n)}">`).join('')}</datalist><datalist id="whoList">${[t('acWho_all'), t('acWho_f'), t('acWho_m'), t('acWho_k')].map(n => `<option value="${esc(n)}">`).join('')}</datalist>`;
+}
+
+function actBudBlock(q){
+  const p = prog(), B = actBudOf(p), adm = isAdmin();
+  const rows = ['game', 'raffle'].filter(k => q.by[k].cost > 0).map(k => {
+    const line = B[k] && S.bud.find(b => b.id === B[k]), actual = line ? spentOn(line.id) : 0, bAmt = line ? Number(line.amount) || 0 : 0;
+    return `<div class="stack" style="gap:6px"><div class="row" style="justify-content:space-between"><b>${esc(t('acBud_' + k))}</b><b class="num">${tk(q.by[k].cost)}</b></div>
+      ${line ? `<div class="small muted">${esc(t('budget'))}: ${tk(bAmt)} · ${esc(t('tsActual'))}: ${tk(actual)}</div><div class="bar thin"><i class="${barCls(actual, bAmt)}" style="width:${barW(actual, bAmt)}%"></i></div>` : ''}
+      <div class="row" style="flex-wrap:wrap">${adm ? `<button class="btn ghost sm" data-a="actToBudget" data-k="${k}">${ic('pie')}${esc(line ? t('tsBudUpdate') : t('tsToBudget'))}</button>` : ''}${can('expense') ? `<button class="btn sm" data-a="actAddExp" data-bud="${line ? esc(line.id) : ''}">${ic('plus')}${esc(t('tsAddExp'))}</button>` : ''}</div></div>`; });
+  return rows.length ? `<section class="card"><h3>${esc(t('acBudHead'))}</h3><div class="stack" style="gap:14px">${rows.join('')}</div></section>` : '';
+}
+function actsView(){
+  const p = prog(), adm = isAdmin(), q = actStats(), A = actsOf(p);
+  const mode = S.actMode || 'all', shown = A.filter(a => mode === 'all' || (a.kind || 'game') === mode);
+  const head = `<div class="sec-h"><h2>${esc(t('acts'))}</h2></div>`;
+  if (!A.length) return head + emptyBox('trophy', t('acEmpty'), adm ? `<button class="btn" data-a="actNew">${ic('plus')}${esc(t('acAdd'))}</button>` : '');
+  const list = shown.length ? `<section class="card" style="padding-block:4px"><div class="list">${shown.map((a, i) => {
+    const zs = a.prizes || [], cost = sum(zs, z => z.cost), bought = zs.filter(z => z.bought).length, won = zs.filter(z => String(z.winner || '').trim()).length;
+    const roles = actRolesLine(a), sub = [actKindLbl(a.kind), a.who].filter(Boolean).map(esc).join(' · ');
+    const pill = zs.length ? (bought >= zs.length ? `<span class="pill ok">${esc(t('acAllBought'))}</span>` : `<span class="pill warn">${esc(t('acToBuy', nf(zs.length - bought)))}</span>`) : '';
+    return `<div class="item tap" data-a="actOpen" data-id="${esc(a.id)}" role="button" tabindex="0"><div class="avatar" style="background:color-mix(in srgb,var(--f${(i % 4) + 1}) 26%,var(--surface));color:color-mix(in srgb,var(--f${(i % 4) + 1}) 65%,var(--ink))"><span style="width:22px;height:22px;display:inline-flex">${ic('trophy')}</span></div>
+      <div class="body"><div class="title">${esc(a.name)}</div><div class="small muted">${sub}</div>${roles ? `<div class="small" style="margin-top:2px;overflow-wrap:anywhere">${esc(roles)}</div>` : ''}
+      ${zs.length ? `<div class="small num muted" style="margin-top:2px">${esc(t('acStat', nf(zs.length), nf(bought), nf(won)))} · ${tk(cost)}</div>` : ''}
+      ${a.kind === 'raffle' && (Number(a.tSold) || 0) ? `<div class="small num" style="margin-top:2px;color:var(--ok)">${esc(t('acTkInc'))}: ${tk((Number(a.tSold) || 0) * (Number(a.tPrice) || 0))}</div>` : ''}</div>${pill}</div>`; }).join('')}</div></section>` : `<div class="card empty"><p>${esc(t('acNoneHere'))}</p></div>`;
+  return `${head}
+  <section class="hero-card"><div class="grid3">${tileH(t('acPrizeCost'), tk(q.cost))}${tileH(t('acBoughtCost'), tk(q.boughtCost), 'color:var(--ok)')}${tileH(t('acRaffleInc'), tk(q.ticketInc), 'color:var(--ok)')}</div>
+    ${q.prizes ? `<div class="small muted">${esc(t('acStat', nf(q.prizes), nf(q.boughtN), nf(q.won)))}</div>` : ''}</section>
+  ${!adm ? `<div class="note-box small">${esc(t('acReadOnly'))}</div>` : ''}
+  ${actBudBlock(q)}
+  <div class="seg">${[['all', t('acFAll'), A.length]].concat(ACT_KINDS.map(k => [k, actKindLbl(k), A.filter(a => (a.kind || 'game') === k).length])).map(([k, l, n]) => `<button class="${mode === k ? 'on' : ''}" data-a="actFilter" data-v="${k}">${esc(l)} (${nf(n)})</button>`).join('')}</div>
+  ${list}
+  <section class="card"><h3>${esc(t('acSend'))}</h3><div class="row" style="flex-wrap:wrap"><button class="btn ghost sm" data-a="actShare" data-v="duty">${ic('share')}${esc(t('acShareDuty'))}</button><button class="btn ghost sm" data-a="actShare" data-v="person">${ic('share')}${esc(t('acSharePerson'))}</button><button class="btn ghost sm" data-a="actShare" data-v="prize">${ic('share')}${esc(t('acSharePrize'))}</button></div></section>`;
+}
+
+function openAct(id){
+  openSheet({ title: t('acts'), live: true, body: () => {
+    const a = actsOf(prog()).find(x => x.id === id); if (!a) return `<p class="muted">${esc(t('noMatch'))}</p>`;
+    const adm = isAdmin(), zs = a.prizes || [], roles = (a.roles || []).filter(r => r.role || r.names);
+    const rolesH = roles.length ? `<div class="card" style="padding-block:6px"><b>${esc(t('acRoles'))}</b><div class="list">${roles.map(r => `<div class="item"><div class="body"><div class="small muted">${esc(r.role || '—')}</div><div class="title" style="overflow-wrap:anywhere">${esc(r.names || '—')}</div></div></div>`).join('')}</div></div>` : `<div class="note-box small">${esc(t('acNoRoles'))}</div>`;
+    const prH = a.kind === 'duty' ? '' : `<div class="card" style="padding-block:6px"><div class="row" style="justify-content:space-between"><b>${esc(t('acPrizes'))}</b><b class="num">${tk(sum(zs, z => z.cost))}</b></div>
+      ${zs.length ? `<div class="list">${zs.map(z => { const w = String(z.winner || '').trim();
+        return `<div class="item"><div class="body"><div class="title"><span class="pill info">${esc(z.pos || '—')}</span> ${esc(z.gift || '—')}</div><div class="small muted num">${Number(z.cost) ? tk(z.cost) : ''}</div><div class="small" style="${w ? 'color:var(--ok)' : 'color:var(--muted)'}">${w ? '🏆 ' + esc(w) : esc(t('acNoWinner'))}</div></div>
+          ${adm ? `<button type="button" class="ib" data-a="actWinner" data-id="${esc(a.id)}" data-z="${esc(z.id)}" aria-label="${esc(t('acSetWinner'))}">${ic('edit')}</button><button class="give ${z.bought ? 'on' : ''}" data-a="actBought" data-id="${esc(a.id)}" data-z="${esc(z.id)}" aria-pressed="${!!z.bought}" aria-label="${esc(t('acBought'))}">${ic('check')}</button>` : (z.bought ? `<span class="pill ok">${esc(t('acBought'))}</span>` : '')}</div>`; }).join('')}</div>` : `<p class="small muted" style="margin:6px 0">${esc(t('acNoPrizes'))}</p>`}</div>`;
+    const tkH = a.kind === 'raffle' ? `<div class="card" style="padding-block:10px"><div class="grid3">${tileH(t('acTkPrice'), Number(a.tPrice) ? tk(a.tPrice) : '—')}${tileH(t('acTkSold'), nf(Number(a.tSold) || 0))}${tileH(t('acTkInc'), tk((Number(a.tSold) || 0) * (Number(a.tPrice) || 0)), 'color:var(--ok)')}</div>${a.recv ? `<div class="small muted" style="margin-top:6px">${esc(t('acTkRecv'))}: ${esc(a.recv)}</div>` : ''}</div>` : '';
+    return `<div class="row"><div class="grow"><div class="title strong" style="font-size:1.1rem">${esc(a.name)}</div><div class="small muted">${[actKindLbl(a.kind), a.who].filter(Boolean).map(esc).join(' · ')}</div></div></div>
+      ${rolesH}${prH}${tkH}${a.note ? `<div class="note-box note-body">${esc(a.note)}</div>` : ''}`; },
+    foot: () => `<button class="btn ghost" data-a="actShare1" data-id="${esc(id)}">${ic('share')}${esc(t('share'))}</button>${isAdmin() ? `<button class="btn" data-a="actEdit" data-id="${esc(id)}">${ic('edit')}${esc(t('edit'))}</button>` : ''}` });
+}
+function openWinner(aid, zid){
+  const a = actsOf(prog()).find(x => x.id === aid), z = a && (a.prizes || []).find(y => y.id === zid); if (!z) return;
+  openSheet({ title: t('acSetWinner'), body: () => `<p style="margin:0"><b>${esc(a.name)}</b> · ${esc(z.pos || '')} ${esc(z.gift || '')}</p><div class="field"><label for="wnName">${esc(t('acWinner'))}</label><input class="in" id="wnName" list="memList" value="${esc(z.winner || '')}"></div><div class="small muted">${esc(t('acWinnerHint'))}</div>${memDL()}`,
+    foot: () => `<button class="btn" data-a="actWinnerSave" data-id="${esc(aid)}" data-z="${esc(zid)}">${ic('check')}${esc(t('save'))}</button>` });
+}
+
+function roleRow(r){
+  return `<div class="mem" data-rid="${esc(r.id)}"><div class="mem-top"><input class="in r-role" list="roleList" placeholder="${esc(t('acRolePh'))}" value="${esc(r.role || '')}" aria-label="${esc(t('acRolePh'))}"><button type="button" class="iconbtn" style="background:var(--bad-soft);color:var(--bad)" data-a="rowDel" aria-label="${esc(t('del'))}">${ic('trash')}</button></div>
+    <input class="in r-names" placeholder="${esc(t('acNamesPh'))}" value="${esc(r.names || '')}" aria-label="${esc(t('acNamesPh'))}">
+    <select class="in r-pick" aria-label="${esc(t('acPick'))}"><option value="">${esc(t('acPick'))}</option>${memberNames().map(n => `<option>${esc(n)}</option>`).join('')}</select></div>`;
+}
+function prizeRow(z){
+  return `<div class="mem" data-zid="${esc(z.id)}"><div class="mem-top"><input class="in z-pos" style="flex:0 0 78px" placeholder="${esc(t('acPos'))}" value="${esc(z.pos || '')}" aria-label="${esc(t('acPos'))}"><input class="in z-gift" placeholder="${esc(t('acGift'))}" value="${esc(z.gift || '')}" aria-label="${esc(t('acGift'))}"><button type="button" class="iconbtn" style="background:var(--bad-soft);color:var(--bad)" data-a="rowDel" aria-label="${esc(t('del'))}">${ic('trash')}</button></div>
+    <div class="grid2"><input class="in z-cost" inputmode="decimal" placeholder="${esc(t('acCost'))}" value="${z.cost == null || z.cost === '' ? '' : esc(z.cost)}" aria-label="${esc(t('acCost'))}"><input class="in z-win" list="memList" placeholder="${esc(t('acWinner'))}" value="${esc(z.winner || '')}" aria-label="${esc(t('acWinner'))}"></div>
+    <label class="mchk"><input type="checkbox" class="z-bought" ${z.bought ? 'checked' : ''}><span>${esc(t('acBought'))}</span></label></div>`;
+}
+function openActForm(id){
+  const a = id ? actsOf(prog()).find(x => x.id === id) : null; if (id && !a) return;
+  const kind = a ? (a.kind || 'game') : 'game';
+  const roles = a ? (a.roles || []) : [{ id: DB.rid(), role: t('role_ref'), names: '' }, { id: DB.rid(), role: t('role_judge'), names: '' }];
+  const prizes = a ? (a.prizes || []) : [0, 1, 2].map(i => ({ id: DB.rid(), pos: posDef('game', i), gift: '', cost: null, bought: false, winner: '' }));
+  openSheet({ title: a ? t('acEdit') : t('acAdd'), body: () => `
+    <div class="field"><label for="acName">${esc(t('acName'))}</label><input class="in" id="acName" placeholder="${esc(t('acNamePh'))}" value="${esc(a ? a.name : '')}"></div>
+    <div class="field"><label>${esc(t('acKind'))}</label><div class="seg" id="acKind">${ACT_KINDS.map(k => `<button type="button" class="${kind === k ? 'on' : ''}" data-a="actKind" data-v="${k}">${esc(t('ak_' + k))}</button>`).join('')}</div></div>
+    <div class="field"><label for="acWho">${esc(t('acWho'))}</label><input class="in" id="acWho" list="whoList" placeholder="${esc(t('acWhoPh'))}" value="${esc(a ? a.who || '' : '')}"></div>
+    <div class="field"><label>${esc(t('acRoles'))}</label><div class="stack" id="roleRows">${roles.map(roleRow).join('')}</div></div>
+    <button type="button" class="btn ghost" data-a="actRoleAdd">${ic('plus')}${esc(t('acAddRole'))}</button>
+    <div id="prSec" class="stack" ${kind === 'duty' ? 'hidden' : ''}><div class="field"><label>${esc(t('acPrizes'))}</label><div class="stack" id="prizeRows">${prizes.map(prizeRow).join('')}</div></div>
+      <button type="button" class="btn ghost" data-a="actPrizeAdd">${ic('plus')}${esc(t('acAddPrize'))}</button></div>
+    <div id="tkSec" class="stack" ${kind === 'raffle' ? '' : 'hidden'}><div class="grid2"><div class="field"><label for="acTkPrice">${esc(t('acTkPrice'))}</label><input class="in" id="acTkPrice" inputmode="decimal" value="${a && a.tPrice ? esc(a.tPrice) : ''}"></div>
+      <div class="field"><label for="acTkSold">${esc(t('acTkSold'))}</label><input class="in" id="acTkSold" inputmode="decimal" value="${a && a.tSold ? esc(a.tSold) : ''}"></div></div>
+      <div class="field"><label for="acTkRecv">${esc(t('acTkRecv'))}</label><input class="in" id="acTkRecv" list="memList" value="${esc(a ? a.recv || '' : '')}"></div><div class="small muted">${esc(t('acTkNote'))}</div></div>
+    <div class="field"><label for="acNote">${esc(t('note'))}</label><textarea class="in" id="acNote">${esc(a ? a.note || '' : '')}</textarea></div>${memDL()}${roleDL()}`,
+    foot: () => `${a ? `<button class="btn danger" data-a="actDel" data-id="${esc(a.id)}" style="flex:0 0 auto" aria-label="${esc(t('del'))}">${ic('trash')}</button>` : ''}<button class="btn" data-a="actSaveForm" data-id="${a ? esc(a.id) : ''}">${ic('check')}${esc(t('save'))}</button>` });
+}
+function readActForm(sh){
+  const kind = ($('#acKind .on', sh) || { dataset: { v: 'game' } }).dataset.v;
+  const d = { name: $('#acName', sh).value.trim(), kind, who: $('#acWho', sh).value.trim(), note: $('#acNote', sh).value.trim(),
+    roles: $$('[data-rid]', sh).map(r => ({ id: r.dataset.rid, role: $('.r-role', r).value.trim(), names: $('.r-names', r).value.trim() })).filter(r => r.role || r.names),
+    prizes: kind === 'duty' ? [] : $$('[data-zid]', sh).map(r => ({ id: r.dataset.zid, pos: $('.z-pos', r).value.trim(), gift: $('.z-gift', r).value.trim(), cost: parseNum($('.z-cost', r).value) || 0, bought: $('.z-bought', r).checked, winner: $('.z-win', r).value.trim() })).filter(z => z.gift || z.cost || z.winner) };
+  if (kind === 'raffle') { d.tPrice = parseNum($('#acTkPrice', sh).value) || 0; d.tSold = parseNum($('#acTkSold', sh).value) || 0; d.recv = $('#acTkRecv', sh).value.trim(); } else { d.tPrice = 0; d.tSold = 0; d.recv = ''; }
+  return d;
+}
+/* text for sharing */
+function actText(kind){
+  const p = prog(), A = actsOf(p), L = [];
+  if (kind === 'person') {
+    L.push(`*${p.name}* — ${t('acByPerson')}`, '');
+    const map = {}; A.forEach(a => (a.roles || []).forEach(r => splitNames(r.names).forEach(n => (map[n] = map[n] || []).push(a.name + (r.role ? ` (${r.role})` : '')))));
+    Object.keys(map).sort().forEach(n => L.push(`${n}: ${map[n].join(', ')}`));
+  } else if (kind === 'prize') {
+    L.push(`*${p.name}* — ${t('acSharePrize')}`);
+    A.filter(a => a.kind !== 'duty' && (a.prizes || []).length).forEach(a => { L.push('', `*${a.name}*${a.who ? ` (${a.who})` : ''}`);
+      (a.prizes || []).forEach(z => L.push(`${z.pos || '-'}. ${z.gift || '—'}${Number(z.cost) ? ' — ' + tk(z.cost) : ''}${String(z.winner || '').trim() ? ' → ' + z.winner : ''}`));
+      L.push(`${t('total')}: ${tk(sum(a.prizes, z => z.cost))}`); });
+    L.push('', `${t('total')}: ${tk(actStats().cost)}`);
+  } else {
+    L.push(`*${p.name}* — ${t('acDutyTitle')}`);
+    A.forEach(a => { const rs = (a.roles || []).filter(r => r.role || r.names); if (!rs.length) return; L.push('', `*${a.name}*${a.who ? ` (${a.who})` : ''}`); rs.forEach(r => L.push(`${r.role || '—'}: ${r.names || '—'}`)); });
+  }
+  return L.join('\n');
+}
+function actText1(a){
+  const L = [`*${prog().name}* — ${a.name}`, [actKindLbl(a.kind), a.who].filter(Boolean).join(' · ')];
+  const rs = (a.roles || []).filter(r => r.role || r.names); if (rs.length) { L.push(''); rs.forEach(r => L.push(`${r.role || '—'}: ${r.names || '—'}`)); }
+  if ((a.prizes || []).length) { L.push(''); a.prizes.forEach(z => L.push(`${z.pos || '-'}. ${z.gift || '—'}${Number(z.cost) ? ' — ' + tk(z.cost) : ''}${String(z.winner || '').trim() ? ' → ' + z.winner : ''}`)); }
+  return L.join('\n');
+}
+
+/* personal gifts: per-person override inside a gift item (g.per[memberId] = { n: name, c: cost }) */
+function openPerGift(gid, mid){
+  const g = S.gifts.find(x => x.id === gid), r = g && giftInfo(g).rec.find(x => x.m.id === mid); if (!r) return; const x = (g.per || {})[mid] || {};
+  openSheet({ title: r.m.name || t('perGift'), body: () => `<p class="small muted" style="margin:0">${esc(g.name)}</p>
+    <div class="field"><label for="pgName">${esc(t('perGift'))}</label><input class="in" id="pgName" placeholder="${esc(t('perGiftPh'))}" value="${esc(x.n || '')}"></div>
+    <div class="field"><label for="pgCost">${esc(t('perGiftCost'))}</label>${calcInput('pgCost', x.c)}</div><div class="small muted">${esc(t('perGiftHint'))}</div>`,
+    foot: () => `<button class="btn" data-a="perGiftSave" data-g="${esc(gid)}" data-m="${esc(mid)}">${ic('check')}${esc(t('save'))}</button>` });
+}
+function giftAllText(){
+  const L = [`*${prog().name}* — ${t('gifts')}`];
+  S.gifts.slice().sort(byOrder).forEach(g => { const inf = giftInfo(g); L.push('', `*${g.name}*`, giftWho(g));
+    inf.rec.forEach(({ m, f }, i) => { const x = (g.per || {})[m.id] || {}; L.push(`${nf(i + 1)}. ${(g.given || {})[m.id] ? '✅' : '⬜'} ${m.name || '—'}${m.id === (f.members[0] || {}).id ? '' : ` (${famName(f)})`}${x.n ? ' — ' + x.n : ''}`); }); });
+  return L.join('\n');
+}
+
 /* ================= phase 6: customizable dashboard ================= */
-const DASH_TYPES = { people:'totalPeople', depts:'byDept', seats:'busSeats', tshirt:'tshirt', chanda:'t_chanda', money:'money', gifts:'gifts', ages:'byAge', cats:'byCat', note:'progNote', stat:'customCard' };
-const DASH_BUILTIN = ['people', 'depts', 'seats', 'tshirt', 'chanda', 'money', 'gifts', 'ages', 'cats', 'note'];
+const DASH_TYPES = { people:'totalPeople', depts:'byDept', seats:'busSeats', tshirt:'tshirt', acts:'acts', chanda:'t_chanda', money:'money', gifts:'gifts', ages:'byAge', cats:'byCat', note:'progNote', stat:'customCard' };
+const DASH_BUILTIN = ['people', 'depts', 'seats', 'tshirt', 'acts', 'chanda', 'money', 'gifts', 'ages', 'cats', 'note'];
 const dashDefault = () => DASH_BUILTIN.map(k => ({ id: k, type: k, size: 'full', title: '', cfg: {} }));
 const dashOf = p => Array.isArray((p || {}).dash) ? p.dash : dashDefault();
 const dashTitle = c => c.title || t(DASH_TYPES[c.type] || 'customCard');
@@ -1351,6 +1521,7 @@ function metricCatalog(){
   add(g4, 'seatsNeed', t('seatsNeed'), q.need); add(g4, 'seatsFree', t('noSeat'), q.free); add(g4, 'seatsOwn', t('ownCarP'), q.own);
   { const T = tsOf(prog()), tq = tsStats(), g8 = t('tshirt');
     if (T.sizes.length && (tq.people || tq.extraN)) { add(g8, 'tsTotal', t('tsTotal'), tq.total); T.sizes.forEach(z => add(g8, 'ts:' + z, z, tq.by[z] + (Number(T.extra[z]) || 0))); if (T.price) add(g8, 'tsCost', t('tsCostEst'), tq.cost, 1); add(g8, 'tsUnset', t('tsUnset'), tq.unset); } }
+  { const aq = actStats(), g9 = t('acts'); if (aq.n) { add(g9, 'acCost', t('acPrizeCost'), aq.cost, 1); add(g9, 'acBought', t('acBoughtCost'), aq.boughtCost, 1); add(g9, 'acRaffle', t('acRaffleInc'), aq.ticketInc, 1); add(g9, 'acWon', t('acWonLbl'), aq.won); } }
   deptStats().forEach(r => { if (r.key === '' && !r.fams) return; add(g5, 'd:' + r.key, r.name + ' · ' + t('people'), r.persons); add(g5, 'dp:' + r.key, r.name + ' · ' + t('collected'), r.paid, 1); });
   Object.keys(s.cats).forEach(c => add(g6, 'c:' + c, (c || t('noCat')) + ' · ' + t('people'), s.cats[c].persons));
   s.groups.forEach(G => add(g7, 'a:' + G.g.id, G.g.name + ' (' + rangeLabel(G.g.min, G.g.max) + ')', G.total));
@@ -1382,6 +1553,13 @@ const DR = {
     return `<section class="card tap" data-a="tab" data-v="tshirt" role="button" tabindex="0"><div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(dashTitle(c))}</h3><b class="num">${esc(t('tsTotalN', nf(q.total)))}</b></div>
       <div class="grid3" style="margin-top:10px">${T.sizes.map(z => `<div class="tile"><div class="k">${esc(z)}</div><div class="v num">${nf(q.by[z] + (Number(T.extra[z]) || 0))}</div></div>`).join('')}</div>
       ${T.price ? `<div class="small muted" style="margin-top:8px">${esc(t('tsCostEst'))}: <b class="num">${tk(q.cost)}</b></div>` : ''}${q.unset ? `<div class="small" style="margin-top:4px;color:var(--bad)">${esc(t('tsUnsetN', nf(q.unset)))}</div>` : ''}</section>`;
+  },
+  acts: c => {
+    const q = actStats(); if (!q.n) return '';
+    const tl = (k, v) => `<div class="tile"><div class="k">${esc(k)}</div><div class="v num sm">${v}</div></div>`;
+    return `<section class="card tap" data-a="tab" data-v="acts" role="button" tabindex="0"><div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(dashTitle(c))}</h3><b class="num">${esc(t('acN', nf(q.n)))}</b></div>
+      <div class="grid3" style="margin-top:10px">${tl(t('acPrizeCost'), tk(q.cost))}${tl(t('acBoughtCost'), tk(q.boughtCost))}${tl(t('acRaffleInc'), tk(q.ticketInc))}</div>
+      ${q.prizes ? `<div class="small muted" style="margin-top:8px">${esc(t('acStat', nf(q.prizes), nf(q.boughtN), nf(q.won)))}</div>` : ''}</section>`;
   },
   chanda: c => {
     const s = stats(); const pct = s.due > 0 ? Math.min(100, Math.round(s.paid / s.due * 100)) : 0;
@@ -1540,7 +1718,38 @@ const A = {
     if (await patchProg({ rates: rs })) closeSheet(); },
   cats: () => openCats(),
   depts: () => openDepts(),
-  tsFilter: el => { S.tsOnly = el.dataset.v === '1'; render(); },
+  actNew: () => { if (isAdmin()) openActForm(null); },
+  actOpen: el => openAct(el.dataset.id),
+  actEdit: el => openActForm(el.dataset.id),
+  actFilter: el => { S.actMode = el.dataset.v; render(); },
+  actKind: el => { const sh = el.closest('.sheet'); $$('#acKind button', sh).forEach(b => b.classList.toggle('on', b === el)); const v = el.dataset.v; $('#prSec', sh).hidden = v === 'duty'; $('#tkSec', sh).hidden = v !== 'raffle'; },
+  actRoleAdd: el => { const sh = el.closest('.sheet'); $('#roleRows', sh).insertAdjacentHTML('beforeend', roleRow({ id: DB.rid(), role: '', names: '' })); $$('#roleRows .r-role', sh).pop().focus(); },
+  actPrizeAdd: el => { const sh = el.closest('.sheet'), n = $$('[data-zid]', sh).length, kind = ($('#acKind .on', sh) || { dataset: { v: 'game' } }).dataset.v;
+    $('#prizeRows', sh).insertAdjacentHTML('beforeend', prizeRow({ id: DB.rid(), pos: posDef(kind, n), gift: '', cost: null, bought: false, winner: '' })); $$('#prizeRows .z-gift', sh).pop().focus(); },
+  actSaveForm: async el => { const sh = el.closest('.sheet'), id = el.dataset.id, d = readActForm(sh); if (!d.name) { toast(t('needName')); $('#acName', sh).focus(); return; }
+    const nid = id || DB.rid();
+    if (await actUpdate(arr => { const i = arr.findIndex(x => x.id === nid); const doc = Object.assign({}, i >= 0 ? arr[i] : {}, d, { id: nid }); if (i >= 0) arr[i] = doc; else arr.push(doc); })) closeSheet(); },
+  actDel: el => { const id = el.dataset.id, a = actsOf(prog()).find(x => x.id === id);
+    confirmBox(t('acDelSure', a ? a.name : ''), async () => { if (await actUpdate(arr => { const i = arr.findIndex(x => x.id === id); if (i >= 0) arr.splice(i, 1); })) closeAll(); }); },
+  actBought: el => { if (!isAdmin()) return; return actUpdate(arr => { const a = arr.find(x => x.id === el.dataset.id), z = a && (a.prizes || []).find(y => y.id === el.dataset.z); if (z) z.bought = !z.bought; }); },
+  actWinner: el => { if (isAdmin()) openWinner(el.dataset.id, el.dataset.z); },
+  actWinnerSave: async el => { const v = $('#wnName', el.closest('.sheet')).value.trim();
+    if (await actUpdate(arr => { const a = arr.find(x => x.id === el.dataset.id), z = a && (a.prizes || []).find(y => y.id === el.dataset.z); if (z) z.winner = v; })) closeSheet(); },
+  actShare: el => openShare(actText(el.dataset.v), t('acts')),
+  actShare1: el => { const a = actsOf(prog()).find(x => x.id === el.dataset.id); if (a) openShare(actText1(a), a.name); },
+  actAddExp: el => openExpense(null, el.dataset.bud || ''),
+  actToBudget: async el => { if (!isAdmin()) return; const k = el.dataset.k, p = prog(), q = actStats(), B = actBudOf(p);
+    const line = B[k] && S.bud.find(b => b.id === B[k]), id = line ? line.id : DB.rid(), amt = q.by[k].cost;
+    const bdoc = line ? Object.assign(strip(line), { amount: amt }) : { name: t('acBud_' + k), parent: '', amount: amt, note: '', order: Date.now(), at: Date.now(), by: myName() };
+    const pdoc = Object.assign(strip(p), { actBud: Object.assign(actBudOf(p), { [k]: id }), updatedAt: Date.now() });
+    await commit(line ? 'editBudget' : 'addBudget', [{ path: budPath(), id, data: bdoc }, { path: 'programs', id: p.id, data: pdoc }]); },
+  perGift: el => { if (can('gift')) openPerGift(el.dataset.g, el.dataset.m); },
+  perGiftSave: async el => { const sh = el.closest('.sheet'), g = S.gifts.find(x => x.id === el.dataset.g); if (!g) return;
+    const n = $('#pgName', sh).value.trim(), c = parseNum($('#pgCost', sh).value), per = Object.assign({}, g.per || {});
+    if (n || c != null) per[el.dataset.m] = { n, c: c == null ? null : c }; else delete per[el.dataset.m];
+    if (await commit('editGift', [{ path: giftPath(), id: g.id, data: Object.assign(strip(g), { per }) }])) closeSheet(); },
+  giftShareAll: () => openShare(giftAllText(), t('gifts')),
+  tsFilter: el => { S.tsMode = el.dataset.v; render(); },
   tsShare: () => openShare(tsText(), t('tshirt')),
   tsSetup: () => openTsSetup(),
   tsSizeAdd: el => { const sh = el.closest('.sheet'); $('#rows', sh).insertAdjacentHTML('beforeend', sizeRow('')); $$('#rows .s-name', sh).pop().focus(); },
@@ -1722,7 +1931,7 @@ document.addEventListener('input', e => {
   if (e.target.id === 'cq') { S.cq = e.target.value; const la = $('#listArea'); if (la) la.innerHTML = chandaList(); }
   if (e.target.id === 'eq') { S.eq = e.target.value; const la = $('#listArea'); if (la) la.innerHTML = expList(); }
 });
-document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.tsm) { setShirt(e.target.dataset.tsm, e.target.value); return; } if (e.target.id === 'pcat') { S.cat = e.target.value; render(); } if (e.target.id === 'expBud') { S.expBud = e.target.value; render(); } });
+document.addEventListener('change', e => { if (e.target.classList && e.target.classList.contains('r-pick')) { const row = e.target.closest('.mem'), inp = row && $('.r-names', row); if (inp && e.target.value) { const cur = splitNames(inp.value); if (!cur.includes(e.target.value)) cur.push(e.target.value); inp.value = cur.join(', '); } e.target.value = ''; return; } if (e.target.dataset && e.target.dataset.tsm) { setShirt(e.target.dataset.tsm, e.target.value); return; } if (e.target.id === 'pcat') { S.cat = e.target.value; render(); } if (e.target.id === 'expBud') { S.expBud = e.target.value; render(); } });
 function loginMsg(err){
   const c = (err && err.code) || '';
   if (/popup-closed-by-user|cancelled-popup-request|user-cancelled/.test(c)) return '';
@@ -1757,6 +1966,15 @@ window.PM_SEED = function(mem, rid, empty, lang){
       { id:rid(), name: L('বাইরের অতিথি', 'Outside guest'), amount:1200, side:'out', cat:'', min:12, max:null }, { id:rid(), name: L('শিশু (৩ থেকে ১২)', 'Child (3 to 12)'), amount:500, side:'any', cat:'', min:3, max:12 },
       { id:rid(), name: L('প্রাপ্তবয়স্ক', 'Adult'), amount:1000, side:'any', cat:'', min:12, max:null }],
     tshirt: { sizes:['S','M','L','XL','XXL'], price:350, minAge:5, extra:{ L:2 }, bud:'' },
+    acts: [
+      { id: rid(), name: L('মহিলাদের খেলা', "Women's games"), kind:'game', who: L('মহিলা', 'Women'), roles:[{ id: rid(), role: L('রেফারি', 'Referee'), names: L('সিস্টার মিতু (নমুনা)', 'Sister Mitu (sample)') }, { id: rid(), role: L('বিচারক', 'Judge'), names: L('ডা. সাদিয়া (নমুনা)', 'Dr. Sadia (sample)') }],
+        prizes:[{ id: rid(), pos: L('১ম', '1st'), gift: L('ডিনার সেট', 'Dinner set'), cost:1200, bought:true, winner: L('নমুনা বেগম', 'Mrs. Rahman') }, { id: rid(), pos: L('২য়', '2nd'), gift: L('টিফিন বক্স', 'Tiffin box'), cost:800, bought:false, winner:'' }], tPrice:0, tSold:0, recv:'', note:'' },
+      { id: rid(), name: L('শিশুদের খেলা (৫ বছরের নিচে)', 'Children games (under 5)'), kind:'game', who: L('শিশু', 'Children'), roles:[{ id: rid(), role: L('রেফারি', 'Referee'), names: L('ডা. ফাহিম (নমুনা)', 'Dr. Fahim (sample)') }],
+        prizes:[{ id: rid(), pos: L('১ম', '1st'), gift: L('খেলনা গাড়ি', 'Toy car'), cost:300, bought:false, winner:'' }], tPrice:0, tSold:0, recv:'', note:'' },
+      { id: rid(), name: 'Raffle draw', kind:'raffle', who: L('সবাই', 'Everyone'), roles:[{ id: rid(), role: L('টিকেট বিক্রি', 'Ticket sales'), names: L('কামাল (নমুনা)', 'Kamal (sample)') }, { id: rid(), role: L('উপস্থাপনা', 'Anchoring'), names: L('ডা. ফাহিম (নমুনা)', 'Dr. Fahim (sample)') }],
+        prizes:[{ id: rid(), pos:'1', gift: L('মাইক্রোওয়েভ ওভেন', 'Microwave oven'), cost:6000, bought:false, winner:'' }, { id: rid(), pos:'2', gift: L('ইলেকট্রিক কেটলি', 'Electric kettle'), cost:1500, bought:false, winner:'' }], tPrice:100, tSold:60, recv: ADM, note:'' },
+      { id: rid(), name: L('ছবি ও ড্রোন', 'Photo and drone'), kind:'duty', who:'', roles:[{ id: rid(), role: L('ছবি তোলা', 'Photography'), names: L('জুবায়ের', 'Zubayer') }, { id: rid(), role: L('ড্রোন শট', 'Drone shot'), names: L('জুবায়ের', 'Zubayer') }], prizes:[], tPrice:0, tSold:0, recv:'', note:'' }
+    ],
     categories:[CONS, DOC, SIS, STF, GST] } };
   let tsN = 0; const M = (name, rel, g, age) => ({ id: rid(), name, rel, g, age, rate:'', ts: age >= 12 ? ['M','L','XL','S','L','XXL'][(tsN++) % 6] : '' });
   const fams = [
@@ -1810,5 +2028,5 @@ window.PM_SEED = function(mem, rid, empty, lang){
 /* ================= start ================= */
 applyPrefs(); render();
 if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.PM_NO_SW) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
-window.PM_TEST = { tsOf, tsStats, tsState, dashOf, dashDefault, metricCatalog, deptStats, seatStats, famSeats, busGroups, drawBuses, busText, collectBackup, restoreBackup, giftGroupsOf, lcSave, evalExpr, autoRate, rateFor, famDue, inRange, parseNum, stats, S, buildWorkbook, giftInfo, ledger };
+window.PM_TEST = { tsOf, tsStats, tsState, dashOf, dashDefault, metricCatalog, deptStats, seatStats, famSeats, busGroups, drawBuses, busText, collectBackup, restoreBackup, giftGroupsOf, lcSave, evalExpr, autoRate, rateFor, famDue, inRange, parseNum, stats, S, buildWorkbook, giftInfo, ledger, actsOf, actStats, money, actText, giftAllText };
 })();
