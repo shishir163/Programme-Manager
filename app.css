@@ -34,6 +34,7 @@ html[data-pm="koyla"]{--bg:#141210;--surface:#1d1a17;--surface-2:#26221e;--ink:#
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-en),var(--font-bn),"Noto Sans Bengali",system-ui,sans-serif;font-size:var(--fs);font-weight:var(--fw);line-height:1.5;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 html[lang="bn"] body{line-height:1.6}
+body{padding-top:env(safe-area-inset-top,0px)}
 b,strong,h1,h2,h3,.strong{font-weight:var(--fw-strong)}
 button,input,select,textarea{font:inherit;color:inherit}
 .num{font-variant-numeric:tabular-nums}
