@@ -40,6 +40,7 @@ window.PMDB = (function(){
     isPristine(){ loadMem(); return !mem.touched; },
     seedLang(){ loadMem(); return mem.seedLang || 'bn'; },
     async set(path, id, data){ loadMem(); mem.touched = true; (mem.cols[path] = mem.cols[path] || {})[id] = JSON.parse(JSON.stringify(data)); persist(); emit(path); },
+    async probe(){ return { ok: true }; },
     async remove(path, id){ loadMem(); mem.touched = true; if (mem.cols[path]) delete mem.cols[path][id]; persist(); emit(path); },
     resetDemo(empty, lang){ mem = { cols:{} }; window.PM_SEED && window.PM_SEED(mem, rid, !!empty, lang || prefLang()); persist(); Object.keys(watchers).forEach(emit); },
     rid
@@ -101,12 +102,19 @@ window.PMDB = (function(){
     },
     watch(path, cb){
       let unsub = null, dead = false;
-      ready.then(() => { if (dead) return; unsub = fs.collection(path).onSnapshot(s => cb(s.docs.map(d => Object.assign({ id: d.id }, d.data()))), err => { console.warn(path, err); window.dispatchEvent(new CustomEvent('pm-db-error', { detail: { path, code: err && err.code } })); }); });
+      ready.then(() => { if (dead) return; unsub = fs.collection(path).onSnapshot(s => cb(s.docs.filter(d => d.id !== '__probe__').map(d => Object.assign({ id: d.id }, d.data()))), err => { console.warn(path, err); window.dispatchEvent(new CustomEvent('pm-db-error', { detail: { path, code: err && err.code } })); }); });
       return () => { dead = true; unsub && unsub(); };
     },
     async getAll(path){ await ready; const q = await fs.collection(path).get(); return q.docs.map(d => Object.assign({ id: d.id }, d.data())); },
     async set(path, id, data){ await ready; return track(fs.collection(path).doc(id).set(clean(data))); },
     async remove(path, id){ await ready; return track(fs.collection(path).doc(id).delete()); },
+    // Writes a throw-away document and waits for the server's real answer, so a blocked write shows its true reason.
+    async probe(path, id){
+      await ready; const ref = fs.collection(path).doc(id);
+      const to = () => new Promise((_, rej) => setTimeout(() => rej({ code: 'timeout' }), 12000));
+      try { await Promise.race([ref.set({ probe: true, at: Date.now() }), to()]); await Promise.race([ref.delete(), to()]); return { ok: true }; }
+      catch(e) { try { ref.delete().catch(() => {}); } catch(x) {} return { ok: false, code: (e && e.code) || 'error' }; }
+    },
     rid
   };
 })();

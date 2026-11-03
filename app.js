@@ -544,6 +544,7 @@ function moreView(){
     ${p ? item('tab', 'shirt', t('tshirt'), tsStats().total ? t('tsTotalN', nf(tsStats().total)) : '', 'data-v="tshirt"') : ''}
     ${p ? item('exportOpen', 'download', t('excel'), '') : ''}
     ${item('backupOpen', 'history', t('backup'), '')}
+    ${DB.mode === 'firebase' ? item('diagOpen', 'cloud', t('diagTitle'), '') : ''}
     ${item('appearance', 'palette', t('appearance'), `${(THEMES.find(x => x.id === themeId()) || {})[P.lang] || ''} · ${(FONTS_BN.find(f => f.id === P.fontBn) || {}).name || ''}`)}
     ${isAdmin() ? item('usersOpen', 'shield', t('users'), t('peopleN', nf(S.users.length))) : ''}
     ${item('historyOpen', 'history', t('history'), S.undo.length ? nf(S.undo.length) : t('noHistory'))}
@@ -1081,9 +1082,34 @@ function syncStrip(){
 }
 window.addEventListener('pm-sync', e => {
   S.sync.pending = (e.detail && e.detail.pending) || 0;
-  if (e.detail && e.detail.error) toast(t('writeFail') + ' ' + e.detail.error);
+  if (e.detail && e.detail.error) {
+    const code = e.detail.error; S.lastWriteErr = { code, at: Date.now() };
+    toast(t('writeFail') + ' ' + code);
+    if (!S._wfAt || Date.now() - S._wfAt > 20000) { S._wfAt = Date.now();
+      openSheet({ title: t('writeFailTitle'), body: () => `<div class="err">${esc(code)}</div><p style="margin:0">${esc(diagWhy(code))}</p><p class="small muted" style="margin:0">${esc(t('writeFailHint'))}</p>`,
+        foot: () => `<button class="btn ghost" data-a="closeSheet">${esc(t('close'))}</button><button class="btn" data-a="diagOpen">${ic('cloud')}${esc(t('diagTitle'))}</button>` }); }
+  }
   renderBandOnly();
 });
+function diagWhy(code){
+  const c = String(code || '');
+  if (c === 'permission-denied') return t('why_denied');
+  if (c === 'unauthenticated') return t('why_unauth');
+  if (c === 'timeout' || c === 'unavailable' || c === 'deadline-exceeded') return t('why_net');
+  if (c === 'resource-exhausted') return t('why_quota');
+  return t('why_other');
+}
+function openDiag(){
+  const pr = S.profile || {}, p = prog(), adm = pr.role === 'admin';
+  const row = (k, v) => `<div class="drow"><span class="dn">${esc(k)}</span><b style="overflow-wrap:anywhere;text-align:right">${esc(v)}</b></div>`;
+  const perms = adm ? t('diagAll') : (PERMS.filter(k => pr.perms && pr.perms[k]).join(', ') || t('diagNone'));
+  const le = S.lastWriteErr;
+  openSheet({ title: t('diagTitle'), body: () => `<p class="small muted" style="margin:0">${esc(t('diagHint'))}</p>
+    <div class="card flat">${row(t('email'), (S.user && S.user.email) || '—')}${row(t('diagRole'), (pr.role || '—') + (pr.active === false ? ' · ' + t('diagOff') : ''))}${row(t('diagPerms'), perms)}${row(t('diagNet'), navigator.onLine === false ? t('syncOff') : t('syncOk'))}${row(t('diagPending'), nf(S.sync.pending))}${row(t('diagRead'), S.dbErr || t('diagNone'))}${row(t('diagLast'), le ? `${le.code} · ${new Date(le.at).toLocaleTimeString(P.lang === 'bn' ? 'bn-BD' : 'en-GB')}` : t('diagNone'))}</div>
+    <div id="diagOut" class="stack"></div>`,
+    foot: () => p ? `<button class="btn" data-a="diagRun">${ic('check')}${esc(t('diagRun'))}</button>` : '' });
+}
+
 window.addEventListener('online', renderBandOnly); window.addEventListener('offline', renderBandOnly);
 
 /* ---------- copy kept on this device ---------- */
@@ -1580,7 +1606,13 @@ const A = {
     if (c.type === 'seats') extra.seatAge = parseNum($('#dcSeatAge', sh).value);
     if (c.type === 'stat') c.cfg.items = $$('[data-mk]', sh).filter(x => x.checked).map(x => x.dataset.mk);
     if (await patchProg(Object.assign({ dash: d }, extra))) closeSheet(); },
-  syncInfo: () => toast(navigator.onLine === false ? t('syncOff') : S.sync.pending > 0 ? t('syncPending', nf(S.sync.pending)) : t('syncOk')),
+  syncInfo: () => openDiag(),
+  diagOpen: () => { closeAll(); openDiag(); },
+  diagRun: async el => { const sh = el.closest('.sheet'), out = $('#diagOut', sh); if (!prog()) return; el.disabled = true; out.innerHTML = `<p class="muted" style="margin:0">${esc(t('diagRunning'))}</p>`;
+    const targets = [[t('t_people'), famPath()], [t('payments'), payPath()], [t('expenses'), expPath()], [t('t_notes'), notePath()]]; const rows = [];
+    for (const [n, path] of targets) rows.push([n, await DB.probe(path, '__probe__')]);
+    out.innerHTML = `<div class="card flat" style="padding-block:4px"><div class="list">${rows.map(([n, r]) => `<div class="item"><div class="body"><div class="title">${esc(n)}</div>${r.ok ? '' : `<div class="small" style="color:var(--bad)">${esc(r.code)} — ${esc(diagWhy(r.code))}</div>`}</div><span class="pill ${r.ok ? 'ok' : 'bad'}">${r.ok ? '✓' : '✗'}</span></div>`).join('')}</div></div>`;
+    el.disabled = false; },
   catsSave: async el => { const v = $('#catsTxt', el.closest('.sheet')).value.split('\n').map(x => x.trim()).filter(Boolean); if (await patchProg({ categories: Array.from(new Set(v)) })) closeSheet(); },
   pmode: el => { S.peopleMode = el.dataset.m; render(); },
   pside: el => { S.side = el.dataset.s; render(); },
